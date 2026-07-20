@@ -1,30 +1,30 @@
 import React, { useEffect, useState } from 'react';
-import { Cloud, CloudDrizzle, CloudLightning, CloudRain, CloudSun, Moon, Sun, Wind, Droplets, Eye, Gauge, AlertTriangle, CheckCircle2, ThermometerSun } from 'lucide-react';
-import { MapContainer, TileLayer, CircleMarker, Tooltip, Circle, Polyline, useMap, useMapEvents } from 'react-leaflet';
+import { Cloud, CloudDrizzle, CloudLightning, CloudRain, CloudSun, Moon, Sun, Wind, Droplets, Eye, Gauge, AlertTriangle, CheckCircle2, Thermometer } from 'lucide-react';
+import { MapContainer, TileLayer, CircleMarker, Tooltip, Circle, Polyline, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 
 // ==========================================
 // FUNÇÕES AUXILIARES DE CLIMA
 // ==========================================
 const getWeatherIcon = (code, isDay = 1) => {
-  if (code === 0) return isDay ? <Sun className="text-yellow-400" /> : <Moon className="text-blue-300" />;
-  if (code === 1 || code === 2) return isDay ? <CloudSun className="text-yellow-200" /> : <Cloud className="text-gray-400" />;
-  if (code === 3) return <Cloud className="text-gray-500" />;
-  if (code >= 51 && code <= 55) return <CloudDrizzle className="text-blue-400" />;
-  if (code >= 61 && code <= 65) return <CloudRain className="text-blue-500" />;
-  if (code >= 80 && code <= 82) return <CloudRain className="text-blue-600" />;
-  if (code >= 95) return <CloudLightning className="text-red-500" />;
-  return <Cloud className="text-gray-600" />;
+  if (code === 0) return isDay ? <Sun className="text-yellow-400 drop-shadow-md" /> : <Moon className="text-blue-200 drop-shadow-md" />;
+  if (code === 1 || code === 2) return isDay ? <CloudSun className="text-yellow-200 drop-shadow-md" /> : <Cloud className="text-gray-300 drop-shadow-md" />;
+  if (code === 3) return <Cloud className="text-gray-400 drop-shadow-md" />;
+  if (code >= 51 && code <= 55) return <CloudDrizzle className="text-blue-300 drop-shadow-md" />;
+  if (code >= 61 && code <= 65) return <CloudRain className="text-blue-400 drop-shadow-md" />;
+  if (code >= 80 && code <= 82) return <CloudRain className="text-blue-500 drop-shadow-md" />;
+  if (code >= 95) return <CloudLightning className="text-red-400 drop-shadow-md" />;
+  return <Cloud className="text-gray-500" />;
 };
 
 const getTempColor = (code) => {
-  if (code >= 95) return "text-red-500";
+  if (code >= 95) return "text-red-400";
   if (code >= 65 || code === 82) return "text-blue-400";
-  return "text-[#30D158]";
+  return "text-white";
 };
 
 // ==========================================
-// COMPONENTES DO MAPA (TÁTICOS)
+// COMPONENTES DO MAPA
 // ==========================================
 const MapResizer = () => {
   const map = useMap();
@@ -35,122 +35,115 @@ const MapResizer = () => {
   return null;
 };
 
-const TargetTelemetry = () => {
-  const [pos, setPos] = useState({ lat: 0, lng: 0 });
-  useMapEvents({
-    mousemove(e) { setPos(e.latlng); }
-  });
-  return (
-    <div className="absolute bottom-4 right-4 z-[400] bg-black/90 p-2 border border-[#30D158]/50 text-[#30D158] font-mono text-[10px] shadow-[0_0_10px_rgba(48,209,88,0.2)] pointer-events-none">
-      <div className="text-white/50 mb-1 border-b border-[#30D158]/30 pb-1">RADAR TELEMETRY</div>
-      <div>LAT: {pos.lat.toFixed(4)}°</div>
-      <div>LON: {pos.lng.toFixed(4)}°</div>
-    </div>
-  );
-};
-
 // ==========================================
-// COMPONENTE: TERMINAL DA CIDADE (COM GRÁFICOS)
+// COMPONENTE: CARD DA CIDADE (DIDÁTICO & PREMIUM)
 // ==========================================
-const TerminalCard = ({ data }) => {
-  if (!data) return <div className="p-6 bg-[#0a0a0a] border border-gray-800 animate-pulse h-[600px]"></div>;
-
-  // Cálculos para os gráficos de barra (Normalização)
-  const maxGust6h = Math.max(...data.hourly.map(h => h.gust), 1);
-  const maxRain5d = Math.max(...data.forecast.map(d => d.rain), 1);
+const WeatherCard = ({ data }) => {
+  if (!data) return <div className="p-6 bg-white/5 rounded-3xl animate-pulse h-[600px]"></div>;
 
   return (
-    <div className="bg-[#050505] p-5 border border-gray-800 relative overflow-hidden flex flex-col gap-4 font-mono">
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:20px_20px] pointer-events-none"></div>
+    <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-6 shadow-2xl border border-white/10 flex flex-col gap-6">
       
-      {/* HEADER */}
-      <div className="flex justify-between items-end border-b border-gray-700 pb-2 z-10">
+      {/* CABEÇALHO */}
+      <div className="flex justify-between items-center border-b border-white/10 pb-4">
         <div>
-          <div className="text-[10px] text-gray-500 mb-1">STATION ID</div>
-          <h2 className="text-2xl font-bold text-white tracking-widest">{data.city.toUpperCase()}</h2>
+          <h2 className="text-2xl font-bold text-white tracking-wide">{data.city}</h2>
+          <p className="text-sm text-gray-300 font-medium mt-1">Mín {data.daily.min}° • Máx {data.daily.max}°</p>
         </div>
-        <div className="text-right">
-          <div className="text-[10px] text-gray-500 mb-1">UV MÁX</div>
-          <span className="text-sm font-bold text-yellow-500">{data.daily.uv}</span>
+        <div className="bg-black/30 px-4 py-2 rounded-2xl border border-white/5 flex flex-col items-center">
+          <span className="text-[10px] text-gray-400 uppercase tracking-wider font-bold">Índice UV</span>
+          <span className="text-lg font-bold text-yellow-400">{data.daily.uv}</span>
         </div>
       </div>
 
-      {/* DADOS METAR (AVIAÇÃO) */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between z-10 py-2 gap-4">
-        <div className="flex items-center gap-4">
-          <div className="p-4 bg-gray-900 border border-gray-700 rounded-sm">
+      {/* CLIMA ATUAL & MÉTRICAS DIDÁTICAS */}
+      <div className="flex flex-col xl:flex-row gap-6 items-center">
+        {/* Bloco de Temperatura */}
+        <div className="flex items-center gap-4 min-w-[200px]">
+          <div className="transform scale-[2.5] ml-4 drop-shadow-2xl">
             {getWeatherIcon(data.current.code, data.current.isDay)}
           </div>
-          <div>
-            <h1 className={`text-6xl font-bold ${getTempColor(data.current.code)} tracking-tighter`}>{data.current.temp}°</h1>
-            <p className="text-gray-500 text-[10px] mt-1">SENS. TÉRMICA: {data.current.feels}°</p>
+          <div className="ml-6">
+            <h1 className={`text-6xl font-bold tracking-tighter ${getTempColor(data.current.code)} drop-shadow-lg`}>
+              {data.current.temp}°
+            </h1>
+            <p className="text-gray-300 text-sm mt-1 font-medium bg-black/20 px-2 py-1 rounded-lg inline-block">
+              Sensação: {data.current.feels}°
+            </p>
           </div>
         </div>
         
-        {/* Painel METAR Estendido */}
-        <div className="grid grid-cols-2 gap-2 text-[10px] text-gray-400 bg-black p-3 border border-gray-800 w-full md:w-auto">
-          <div className="flex justify-between gap-3"><span className="text-gray-600">WND</span><span className="text-white">{data.current.windSpd} KM/H</span></div>
-          <div className="flex justify-between gap-3"><span className="text-gray-600">GUST</span><span className="text-red-400">{data.current.gusts} KM/H</span></div>
-          <div className="flex justify-between gap-3"><span className="text-gray-600">VIS</span><span className="text-white">{data.current.visibility} M</span></div>
-          <div className="flex justify-between gap-3"><span className="text-gray-600">CLD</span><span className="text-white">{data.current.clouds}%</span></div>
-          <div className="flex justify-between gap-3"><span className="text-gray-600">QNH</span><span className="text-white">{data.current.pressure} HPA</span></div>
-          <div className="flex justify-between gap-3"><span className="text-gray-600">DEW</span><span className="text-blue-300">{data.current.dewPoint}°</span></div>
+        {/* Grid de Métricas (Fácil leitura) */}
+        <div className="grid grid-cols-2 gap-3 w-full bg-black/20 p-4 rounded-2xl border border-white/5">
+          <div className="flex flex-col">
+            <span className="text-[10px] text-gray-400 uppercase font-bold flex items-center gap-1"><Wind size={12}/> Vento</span>
+            <span className="text-sm font-bold text-white">{data.current.windSpd} km/h</span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[10px] text-red-400 uppercase font-bold flex items-center gap-1"><Wind size={12}/> Rajadas</span>
+            <span className="text-sm font-bold text-white">{data.current.gusts} km/h</span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[10px] text-gray-400 uppercase font-bold flex items-center gap-1"><Eye size={12}/> Visibilidade</span>
+            <span className="text-sm font-bold text-white">{data.current.visibility} m</span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[10px] text-gray-400 uppercase font-bold flex items-center gap-1"><Gauge size={12}/> Pressão</span>
+            <span className="text-sm font-bold text-white">{data.current.pressure} hPa</span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[10px] text-gray-400 uppercase font-bold flex items-center gap-1"><Droplets size={12}/> Umidade</span>
+            <span className="text-sm font-bold text-white">{data.current.clouds}%</span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[10px] text-gray-400 uppercase font-bold flex items-center gap-1"><Thermometer size={12}/> Pt. Orvalho</span>
+            <span className="text-sm font-bold text-blue-300">{data.current.dewPoint}°</span>
+          </div>
         </div>
       </div>
 
-      {/* MÓDULO 1: PILOTO (6H TREND & WIND GUST CHART) */}
-      <div className="mt-2 z-10 border border-gray-800 bg-black/50 p-3">
-        <div className="text-[10px] text-[#30D158] border-b border-gray-800 pb-1 mb-2 font-bold tracking-widest">AVIAÇÃO: JANELA 6H (RAJADAS)</div>
-        <div className="grid grid-cols-6 gap-2">
+      {/* PREVISÃO 6 HORAS COM CHUVA EM MM */}
+      <div className="mt-2">
+        <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Próximas 6 Horas</h3>
+        <div className="grid grid-cols-6 gap-2 bg-black/20 p-4 rounded-2xl border border-white/5">
           {data.hourly.map((hour, idx) => {
-            const barHeight = Math.max((hour.gust / 80) * 100, 5); // 80km/h como teto visual do gráfico
-            const isDanger = hour.gust > 40;
+            // Calcula a altura da barrinha de chuva (máx 15mm para o teto do gráfico)
+            const rainHeight = Math.min((hour.precip / 15) * 100, 100);
             return (
-              <div key={idx} className="flex flex-col items-center justify-end h-32 gap-1">
-                <span className="text-[9px] text-gray-500 mb-auto">{hour.time}</span>
-                <div className="transform scale-75 my-1">{getWeatherIcon(hour.code, 1)}</div>
-                <span className={`text-[10px] font-bold ${getTempColor(hour.code)}`}>{hour.temp}°</span>
+              <div key={idx} className="flex flex-col items-center justify-between h-32">
+                <span className="text-xs text-gray-300 font-medium">{hour.time}</span>
+                <div className="transform scale-110 drop-shadow-md">{getWeatherIcon(hour.code, 1)}</div>
+                <span className={`text-sm font-bold ${getTempColor(hour.code)}`}>{hour.temp}°</span>
                 
-                {/* Gráfico de Barras CSS */}
-                <div className="w-full bg-gray-900 h-10 relative mt-1 flex items-end justify-center rounded-t-sm">
-                  <div 
-                    style={{ height: `${Math.min(barHeight, 100)}%` }} 
-                    className={`w-3/4 ${isDanger ? 'bg-red-500' : 'bg-blue-400'} transition-all duration-1000`}
-                  ></div>
+                {/* Visualização de Chuva Didática */}
+                <div className="flex flex-col items-center mt-auto w-full">
+                  <div className="w-full bg-black/40 h-8 relative rounded-md flex items-end overflow-hidden border border-white/5">
+                    <div style={{ height: `${rainHeight}%` }} className="w-full bg-blue-500/80 transition-all duration-1000"></div>
+                  </div>
+                  <span className="text-[10px] font-bold text-blue-300 mt-1 flex items-center gap-0.5">
+                    <Droplets size={8} /> {hour.precip > 0 ? `${hour.precip.toFixed(1)}` : '0'}
+                  </span>
                 </div>
-                <span className={`text-[8px] ${isDanger ? 'text-red-500 font-bold' : 'text-gray-500'}`}>{hour.gust}kt</span>
               </div>
             );
           })}
         </div>
       </div>
 
-      {/* MÓDULO 2: DEFESA CIVIL (5-DAY OUTLOOK & RAIN CHART) */}
-      <div className="mt-2 z-10 border border-gray-800 bg-black/50 p-3">
-        <div className="text-[10px] text-yellow-500 border-b border-gray-800 pb-1 mb-2 font-bold tracking-widest">DEFESA CIVIL: ACUMULADO 5 DIAS</div>
-        <div className="grid grid-cols-5 gap-2">
-          {data.forecast.map((day, idx) => {
-            const rainHeight = Math.max((day.rain / maxRain5d) * 100, 2); 
-            const isHeavyRain = day.rain > 25;
-            return (
-              <div key={idx} className="flex flex-col items-center justify-end h-36 gap-1">
-                <span className={`text-[10px] font-bold ${idx === 0 ? 'text-white' : 'text-gray-500'}`}>{day.dayName}</span>
-                <div className="transform scale-90 my-1">{getWeatherIcon(day.code, 1)}</div>
-                <span className="text-[9px] text-gray-400">{day.min}°/{day.max}°</span>
-                
-                {/* Gráfico de Barras CSS Hidrológico */}
-                <div className="w-full bg-gray-900 h-12 relative mt-1 flex items-end justify-center rounded-t-sm border-b border-blue-900/50">
-                  <div 
-                    style={{ height: `${rainHeight}%` }} 
-                    className={`w-4/5 ${isHeavyRain ? 'bg-blue-500' : 'bg-blue-800'} transition-all duration-1000`}
-                  ></div>
-                </div>
-                <span className={`text-[9px] ${isHeavyRain ? 'text-blue-400 font-bold' : 'text-gray-600'}`}>
-                  {day.rain > 0 ? `${day.rain.toFixed(1)}mm` : '0mm'}
-                </span>
-              </div>
-            );
-          })}
+      {/* PREVISÃO 5 DIAS */}
+      <div className="mt-1">
+        <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Próximos 5 Dias</h3>
+        <div className="grid grid-cols-5 gap-2 bg-black/20 p-4 rounded-2xl border border-white/5">
+          {data.forecast.map((day, idx) => (
+            <div key={idx} className="flex flex-col items-center gap-2">
+              <span className={`text-[11px] font-bold ${idx === 0 ? 'text-white' : 'text-gray-400'}`}>{day.dayName}</span>
+              <div className="transform scale-110 drop-shadow-md">{getWeatherIcon(day.code, 1)}</div>
+              <span className="text-xs font-bold text-gray-200">{day.min}°/{day.max}°</span>
+              <span className="text-[10px] font-bold text-blue-400 bg-blue-900/30 px-2 py-0.5 rounded-full mt-1">
+                {day.rain > 0 ? `${day.rain.toFixed(1)} mm` : '0 mm'}
+              </span>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -164,16 +157,14 @@ const TerminalCard = ({ data }) => {
 export default function App() {
   const [weatherData, setWeatherData] = useState({ bage: null, canoas: null });
   const [radar, setRadar] = useState({ host: "", path: "", time: "" });
-  const [threatLevel, setThreatLevel] = useState({ level: 'GREEN', text: 'SINCRONIZANDO DADOS...' });
+  const [threatLevel, setThreatLevel] = useState({ level: 'GREEN', text: 'Analisando condições operacionais...' });
 
   useEffect(() => {
     const fetchWeather = async (lat, lon, city) => {
-      // API 100% Completa (Adicionado Dew Point / Ponto de Orvalho)
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,is_day,precipitation,weather_code,wind_speed_10m,wind_gusts_10m,visibility,cloud_cover,pressure_msl,relative_humidity_2m&hourly=temperature_2m,weather_code,precipitation,wind_gusts_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,uv_index_max&timezone=America%2FSao_Paulo`;
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,is_day,precipitation,weather_code,wind_speed_10m,wind_gusts_10m,visibility,relative_humidity_2m,pressure_msl&hourly=temperature_2m,weather_code,precipitation,wind_gusts_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,uv_index_max&timezone=America%2FSao_Paulo`;
       const res = await fetch(url);
       const json = await res.json();
 
-      // Cálculo simplificado do Ponto de Orvalho baseado na Umidade Relativa e Temp
       const temp = json.current.temperature_2m;
       const rh = json.current.relative_humidity_2m;
       const dewPoint = Math.round(temp - ((100 - rh) / 5));
@@ -187,8 +178,7 @@ export default function App() {
             time: json.hourly.time[idx].split("T")[1],
             temp: Math.round(json.hourly.temperature_2m[idx]),
             code: json.hourly.weather_code[idx],
-            precip: json.hourly.precipitation[idx],
-            gust: Math.round(json.hourly.wind_gusts_10m[idx])
+            precip: json.hourly.precipitation[idx]
           });
         }
       }
@@ -217,8 +207,7 @@ export default function App() {
           pressure: Math.round(json.current.pressure_msl),
           windSpd: Math.round(json.current.wind_speed_10m),
           gusts: Math.round(json.current.wind_gusts_10m),
-          clouds: json.current.cloud_cover,
-          precip: json.current.precipitation,
+          clouds: rh, 
           dewPoint: dewPoint
         },
         daily: {
@@ -251,18 +240,18 @@ export default function App() {
       setWeatherData({ bage, canoas });
       await fetchRadar();
 
-      // INTELIGÊNCIA CRÍTICA: PILOTO + DEFESA CIVIL
+      // INTELIGÊNCIA OPERACIONAL (Fácil de entender)
       const maxGust = Math.max(bage.current.gusts, canoas.current.gusts);
       const worstCode = Math.max(bage.current.code, canoas.current.code);
       const minVis = Math.min(bage.current.visibility, canoas.current.visibility);
-      const rainAccumulated = canoas.forecast[0].rain + bage.forecast[0].rain; // Soma da chuva de hoje nas duas bases
+      const rainAccumulated = canoas.forecast[0].rain + bage.forecast[0].rain; 
       
       if (minVis <= 3000 || maxGust >= 60 || worstCode >= 95) {
-        setThreatLevel({ level: 'RED', text: 'NO-GO VFR. Risco EVAM Alto. Defesa Civil: Alerta de Desastre Natural' });
+        setThreatLevel({ level: 'RED', text: 'ALERTA: Condições severas. Risco operacional altíssimo para resgates ou operações externas.' });
       } else if (minVis <= 5000 || maxGust >= 40 || worstCode >= 51 || rainAccumulated > 40) {
-        setThreatLevel({ level: 'YELLOW', text: 'STANDBY. Condições marginais VFR. Defesa Civil: Monitorar saturação do solo' });
+        setThreatLevel({ level: 'YELLOW', text: 'ATENÇÃO: Condições meteorológicas marginais. Exige avaliação cautelosa da equipe.' });
       } else {
-        setThreatLevel({ level: 'GREEN', text: 'VMC TOTAL. Envelope Liberado. Defesa Civil: Risco Hidrológico Baixo' });
+        setThreatLevel({ level: 'GREEN', text: 'OPERAÇÃO NORMAL: Condições favoráveis de voo (VMC) e solo limpo.' });
       }
     };
 
@@ -274,73 +263,86 @@ export default function App() {
   const hacoCoords = [-29.92, -51.18];
   const bageCoords = [-31.33, -54.11];
 
+  // Cores do Banner Premium
   const threatColors = {
-    RED: "bg-red-900 border-red-500 text-red-200",
-    YELLOW: "bg-yellow-900 border-yellow-500 text-yellow-200",
-    GREEN: "bg-green-900/30 border-green-500/50 text-green-400"
+    RED: "bg-red-500/20 border-red-500/50 text-red-200",
+    YELLOW: "bg-yellow-500/20 border-yellow-500/50 text-yellow-200",
+    GREEN: "bg-green-500/20 border-green-500/50 text-green-300"
   };
 
   const ThreatIcon = threatLevel.level === 'GREEN' ? CheckCircle2 : AlertTriangle;
 
   return (
-    <div className="min-h-screen bg-[#050505] p-4 md:p-6 font-mono text-gray-200 selection:bg-[#30D158] selection:text-black flex flex-col gap-4">
+    <div className="min-h-screen bg-slate-900 p-4 md:p-8 text-gray-200 font-sans flex flex-col gap-6"
+         style={{ background: 'radial-gradient(circle at top right, #1e293b, #0f172a, #020617)' }}>
       
       <style>{`
-        body { background-color: #050505; }
-        .leaflet-container { background-color: #050505 !important; cursor: crosshair !important; }
+        /* Reset do Leaflet e Fim do Quadrado Cinza */
+        .leaflet-container { background-color: #0f172a !important; font-family: ui-sans-serif, system-ui, sans-serif !important; border-radius: 1.5rem; }
         .leaflet-container img { max-width: none !important; max-height: none !important; margin: 0 !important; padding: 0 !important; }
-        .dark-base-map { filter: invert(100%) hue-rotate(180deg) brightness(80%) contrast(120%) grayscale(50%); }
-        .leaflet-tooltip { background: #000 !important; border: 1px solid #30D158 !important; color: #30D158 !important; font-family: monospace; font-size: 10px; font-weight: bold; border-radius: 0 !important; box-shadow: none !important; }
-        .leaflet-tooltip-right::before { border-right-color: #30D158 !important; }
-        .leaflet-tooltip-left::before { border-left-color: #30D158 !important; }
+        /* Máscara de Mapa Escuro Premium */
+        .dark-base-map { filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%) grayscale(20%); }
+        /* Estilo da Caixinha do Mapa */
+        .leaflet-tooltip { background: rgba(15, 23, 42, 0.9) !important; border: 1px solid rgba(255,255,255,0.1) !important; color: white !important; font-weight: bold; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.5) !important; border-radius: 8px !important; backdrop-filter: blur(4px); }
+        .leaflet-tooltip-right::before { border-right-color: rgba(15, 23, 42, 0.9) !important; }
+        .leaflet-tooltip-left::before { border-left-color: rgba(15, 23, 42, 0.9) !important; }
       `}</style>
 
-      {/* CABEÇALHO DE COMANDO JOINT (FAB + DC) */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-gray-800 pb-4">
+      {/* CABEÇALHO PREMIUM */}
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 max-w-[1400px] mx-auto w-full">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-white tracking-[0.2em]">C.O.C. METEOROLÓGICO HACO</h1>
-          <p className="text-xs text-[#30D158] mt-1 tracking-widest">AVIAÇÃO DE RESGATE & CONTROLE DE DESASTRES</p>
+          <h1 className="text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400 tracking-tight">
+            Dashboard HACO
+          </h1>
+          <p className="text-sm text-slate-400 mt-1 font-medium">Saúde Operacional & Monitoramento Climático</p>
         </div>
         
-        <div className={`flex items-center gap-3 px-4 py-2 border ${threatColors[threatLevel.level]}`}>
-          <ThreatIcon size={20} className="animate-pulse" />
-          <span className="text-xs font-bold tracking-widest">{threatLevel.text}</span>
+        {/* BANNER DE STATUS DIDÁTICO */}
+        <div className={`flex items-center gap-4 px-6 py-3 rounded-2xl border backdrop-blur-md shadow-lg ${threatColors[threatLevel.level]} max-w-xl`}>
+          <div className="bg-black/20 p-2 rounded-full">
+            <ThreatIcon size={24} />
+          </div>
+          <span className="text-sm font-medium leading-tight">{threatLevel.text}</span>
         </div>
       </div>
       
-      {/* MÓDULOS DE ESTAÇÃO (COM GRÁFICOS) */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <TerminalCard data={weatherData.bage} />
-        <TerminalCard data={weatherData.canoas} />
+      {/* GRID DOS CARDS DE ESTAÇÃO */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 max-w-[1400px] mx-auto w-full">
+        <WeatherCard data={weatherData.bage} />
+        <WeatherCard data={weatherData.canoas} />
       </div>
 
-      {/* TELA DO RADAR (LIMPA E TÁTICA) */}
-      <div className="border border-gray-800 relative bg-[#050505] mt-2">
+      {/* TELA DO RADAR (CLEAN E MODERNA) */}
+      <div className="w-full max-w-[1400px] mx-auto relative rounded-3xl shadow-2xl border border-white/10 p-2 bg-white/5 backdrop-blur-sm mt-4">
         
-        <div className="absolute top-4 left-4 z-[400] bg-black/90 p-3 border border-[#30D158]/50 shadow-[0_0_10px_rgba(48,209,88,0.1)] pointer-events-none">
-          <div className="flex items-center gap-2 mb-2 border-b border-[#30D158]/30 pb-2">
-            <span className="bg-red-600 text-white text-[9px] font-black px-1.5 py-0.5">REC</span>
-            <span className="text-[#30D158] text-[10px] font-bold tracking-widest">NEXRAD SURFACE RADAR</span>
+        {/* Overlay Simples do Radar */}
+        <div className="absolute top-6 left-6 z-[400] bg-slate-900/90 p-4 rounded-2xl border border-white/10 shadow-xl pointer-events-none backdrop-blur-md">
+          <div className="flex items-center gap-3 mb-2">
+            <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-lg animate-pulse">AO VIVO</span>
+            <span className="text-white text-sm font-bold">Radar Meteorológico</span>
           </div>
-          <div className="text-white text-[10px]">CTRL: HACO / SDSOP</div>
-          <div className="text-white text-[10px]">RNG: 100/200/300 KM</div>
-          <div className="text-[#30D158] text-[10px] mt-2 font-bold animate-pulse">
-            UPDT: {radar.time || "SYNC..."}
+          <div className="text-slate-300 text-xs mt-3 flex items-center gap-2">
+            <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+            Última varredura: {radar.time || "--:--"}
           </div>
         </div>
 
-        <div className="h-[600px] w-full bg-[#050505]">
+        {/* 
+          MAPA CORRIGIDO: 
+          boxZoom={false} desativa o atalho "Shift+Drag" que criava o quadrado cinza!
+        */}
+        <div className="h-[600px] w-full rounded-3xl overflow-hidden bg-slate-900">
           <MapContainer 
             key={radar.path ? `map-${radar.path}` : "map-loading"}
             center={[-30.627, -52.646]} 
             zoom={6} 
             maxZoom={12} 
             minZoom={5}
-            style={{ height: '100%', width: '100%', background: '#050505' }}
             zoomControl={false}
+            boxZoom={false} 
+            style={{ height: '100%', width: '100%' }}
           >
             <MapResizer />
-            <TargetTelemetry />
 
             <TileLayer
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -352,26 +354,22 @@ export default function App() {
             {radar.path && (
               <TileLayer
                 url={`${radar.host}${radar.path}/256/{z}/{x}/{y}/6/1_1.png`}
-                opacity={0.8}
+                opacity={0.85}
                 maxNativeZoom={6} 
                 maxZoom={12}
                 zIndex={10}
               />
             )}
 
-            <Polyline positions={[[-10.0, -51.18], [-40.0, -51.18]]} color="#30D158" weight={1} opacity={0.3} dashArray="2, 6" />
-            <Polyline positions={[[-29.92, -70.0], [-29.92, -30.0]]} color="#30D158" weight={1} opacity={0.3} dashArray="2, 6" />
-
-            <Circle center={hacoCoords} radius={100000} color="#30D158" weight={1} fill={false} opacity={0.4} />
-            <Circle center={hacoCoords} radius={200000} color="#30D158" weight={1} fill={false} opacity={0.4} />
-            <Circle center={hacoCoords} radius={300000} color="#30D158" weight={1} fill={false} opacity={0.4} />
-
-            <CircleMarker center={hacoCoords} radius={4} color="#30D158" weight={2} fillColor="#000" fillOpacity={1} zIndexOffset={100}>
-              <Tooltip direction="right" offset={[10, 0]} opacity={1} permanent>HACO</Tooltip>
+            {/* Círculos de marcação sutis */}
+            <Circle center={hacoCoords} radius={100000} color="#60a5fa" weight={1} fill={false} opacity={0.3} dashArray="5, 10" />
+            
+            <CircleMarker center={hacoCoords} radius={6} color="#000" weight={2} fillColor="#3b82f6" fillOpacity={1} zIndexOffset={100}>
+              <Tooltip direction="right" offset={[12, 0]} opacity={1} permanent>Canoas (HACO)</Tooltip>
             </CircleMarker>
 
-            <CircleMarker center={bageCoords} radius={4} color="#30D158" weight={2} fillColor="#000" fillOpacity={1} zIndexOffset={100}>
-              <Tooltip direction="left" offset={[-10, 0]} opacity={1} permanent>BAGÉ</Tooltip>
+            <CircleMarker center={bageCoords} radius={6} color="#000" weight={2} fillColor="#f59e0b" fillOpacity={1} zIndexOffset={100}>
+              <Tooltip direction="left" offset={[-12, 0]} opacity={1} permanent>Bagé</Tooltip>
             </CircleMarker>
 
           </MapContainer>
