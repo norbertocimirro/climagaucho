@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Cloud, CloudDrizzle, CloudLightning, CloudRain, CloudSun, Moon, Sun, Wind, Droplets, Eye, Gauge, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Cloud, CloudDrizzle, CloudLightning, CloudRain, CloudSun, Moon, Sun, Wind, Droplets, Eye, Gauge, AlertTriangle, CheckCircle2, ThermometerSun } from 'lucide-react';
 import { MapContainer, TileLayer, CircleMarker, Tooltip, Circle, Polyline, useMap, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -42,7 +42,7 @@ const TargetTelemetry = () => {
   });
   return (
     <div className="absolute bottom-4 right-4 z-[400] bg-black/90 p-2 border border-[#30D158]/50 text-[#30D158] font-mono text-[10px] shadow-[0_0_10px_rgba(48,209,88,0.2)] pointer-events-none">
-      <div className="text-white/50 mb-1 border-b border-[#30D158]/30 pb-1">TGT TELEMETRY</div>
+      <div className="text-white/50 mb-1 border-b border-[#30D158]/30 pb-1">RADAR TELEMETRY</div>
       <div>LAT: {pos.lat.toFixed(4)}°</div>
       <div>LON: {pos.lng.toFixed(4)}°</div>
     </div>
@@ -50,10 +50,14 @@ const TargetTelemetry = () => {
 };
 
 // ==========================================
-// COMPONENTE: TERMINAL DA CIDADE
+// COMPONENTE: TERMINAL DA CIDADE (COM GRÁFICOS)
 // ==========================================
 const TerminalCard = ({ data }) => {
-  if (!data) return <div className="p-6 bg-[#0a0a0a] border border-gray-800 animate-pulse h-[400px]"></div>;
+  if (!data) return <div className="p-6 bg-[#0a0a0a] border border-gray-800 animate-pulse h-[600px]"></div>;
+
+  // Cálculos para os gráficos de barra (Normalização)
+  const maxGust6h = Math.max(...data.hourly.map(h => h.gust), 1);
+  const maxRain5d = Math.max(...data.forecast.map(d => d.rain), 1);
 
   return (
     <div className="bg-[#050505] p-5 border border-gray-800 relative overflow-hidden flex flex-col gap-4 font-mono">
@@ -63,63 +67,93 @@ const TerminalCard = ({ data }) => {
       <div className="flex justify-between items-end border-b border-gray-700 pb-2 z-10">
         <div>
           <div className="text-[10px] text-gray-500 mb-1">STATION ID</div>
-          <h2 className="text-xl font-bold text-white tracking-widest">{data.city.toUpperCase()}</h2>
+          <h2 className="text-2xl font-bold text-white tracking-widest">{data.city.toUpperCase()}</h2>
         </div>
         <div className="text-right">
-          <div className="text-[10px] text-gray-500 mb-1">T/MAX - T/MIN</div>
-          <span className="text-sm font-bold text-gray-300">{data.daily.max}° / {data.daily.min}°</span>
+          <div className="text-[10px] text-gray-500 mb-1">UV MÁX</div>
+          <span className="text-sm font-bold text-yellow-500">{data.daily.uv}</span>
         </div>
       </div>
 
-      {/* DADOS AVANÇADOS DE AVIAÇÃO */}
-      <div className="flex items-center justify-between z-10 py-2">
+      {/* DADOS METAR (AVIAÇÃO) */}
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between z-10 py-2 gap-4">
         <div className="flex items-center gap-4">
-          <div className="p-3 bg-gray-900 border border-gray-700">
+          <div className="p-4 bg-gray-900 border border-gray-700 rounded-sm">
             {getWeatherIcon(data.current.code, data.current.isDay)}
           </div>
           <div>
-            <h1 className={`text-5xl font-bold ${getTempColor(data.current.code)}`}>{data.current.temp}°</h1>
-            <p className="text-gray-500 text-[10px] mt-1">FL Tº {data.current.feels}°</p>
+            <h1 className={`text-6xl font-bold ${getTempColor(data.current.code)} tracking-tighter`}>{data.current.temp}°</h1>
+            <p className="text-gray-500 text-[10px] mt-1">SENS. TÉRMICA: {data.current.feels}°</p>
           </div>
         </div>
         
-        {/* Painel Estendido */}
-        <div className="flex flex-col gap-1.5 text-[10px] text-gray-400 bg-black p-3 border border-gray-800 min-w-[130px]">
-          <div className="flex items-center justify-between gap-2">
-            <span className="flex items-center gap-1 text-gray-500"><Wind size={12}/> WND</span>
-            <span className="text-white">{data.current.windSpd} KM/H</span>
-          </div>
-          <div className="flex items-center justify-between gap-2">
-            <span className="flex items-center gap-1 text-red-500"><Wind size={12}/> GUST</span>
-            <span className="text-white">{data.current.gusts} KM/H</span>
-          </div>
-          <div className="flex items-center justify-between gap-2">
-            <span className="flex items-center gap-1 text-gray-500"><Cloud size={12}/> CLD</span>
-            <span className="text-white">{data.current.clouds}%</span>
-          </div>
-          <div className="flex items-center justify-between gap-2">
-            <span className="flex items-center gap-1 text-gray-500"><Eye size={12}/> VIS</span>
-            <span className="text-white">{data.current.visibility} M</span>
-          </div>
-          <div className="flex items-center justify-between gap-2">
-            <span className="flex items-center gap-1 text-gray-500"><Gauge size={12}/> QNH</span>
-            <span className="text-white">{data.current.pressure} HPA</span>
-          </div>
+        {/* Painel METAR Estendido */}
+        <div className="grid grid-cols-2 gap-2 text-[10px] text-gray-400 bg-black p-3 border border-gray-800 w-full md:w-auto">
+          <div className="flex justify-between gap-3"><span className="text-gray-600">WND</span><span className="text-white">{data.current.windSpd} KM/H</span></div>
+          <div className="flex justify-between gap-3"><span className="text-gray-600">GUST</span><span className="text-red-400">{data.current.gusts} KM/H</span></div>
+          <div className="flex justify-between gap-3"><span className="text-gray-600">VIS</span><span className="text-white">{data.current.visibility} M</span></div>
+          <div className="flex justify-between gap-3"><span className="text-gray-600">CLD</span><span className="text-white">{data.current.clouds}%</span></div>
+          <div className="flex justify-between gap-3"><span className="text-gray-600">QNH</span><span className="text-white">{data.current.pressure} HPA</span></div>
+          <div className="flex justify-between gap-3"><span className="text-gray-600">DEW</span><span className="text-blue-300">{data.current.dewPoint}°</span></div>
         </div>
       </div>
 
-      {/* PREVISÃO CURTO PRAZO */}
-      <div className="text-[10px] text-gray-500 mt-2 z-10">SHORT-TERM FORECAST (6H)</div>
-      <div className="grid grid-cols-6 gap-1 z-10">
-        {data.hourly.map((hour, idx) => (
-          <div key={idx} className="flex flex-col items-center bg-gray-900/50 border border-gray-800 p-2">
-            <span className="text-[9px] text-gray-400">{hour.time}</span>
-            <div className="my-2 transform scale-75">{getWeatherIcon(hour.code, 1)}</div>
-            <span className={`text-xs font-bold ${getTempColor(hour.code)}`}>{hour.temp}°</span>
-            <span className="text-[9px] text-blue-400 mt-1">{hour.precip > 0 ? `${hour.precip}mm` : '---'}</span>
-          </div>
-        ))}
+      {/* MÓDULO 1: PILOTO (6H TREND & WIND GUST CHART) */}
+      <div className="mt-2 z-10 border border-gray-800 bg-black/50 p-3">
+        <div className="text-[10px] text-[#30D158] border-b border-gray-800 pb-1 mb-2 font-bold tracking-widest">AVIAÇÃO: JANELA 6H (RAJADAS)</div>
+        <div className="grid grid-cols-6 gap-2">
+          {data.hourly.map((hour, idx) => {
+            const barHeight = Math.max((hour.gust / 80) * 100, 5); // 80km/h como teto visual do gráfico
+            const isDanger = hour.gust > 40;
+            return (
+              <div key={idx} className="flex flex-col items-center justify-end h-32 gap-1">
+                <span className="text-[9px] text-gray-500 mb-auto">{hour.time}</span>
+                <div className="transform scale-75 my-1">{getWeatherIcon(hour.code, 1)}</div>
+                <span className={`text-[10px] font-bold ${getTempColor(hour.code)}`}>{hour.temp}°</span>
+                
+                {/* Gráfico de Barras CSS */}
+                <div className="w-full bg-gray-900 h-10 relative mt-1 flex items-end justify-center rounded-t-sm">
+                  <div 
+                    style={{ height: `${Math.min(barHeight, 100)}%` }} 
+                    className={`w-3/4 ${isDanger ? 'bg-red-500' : 'bg-blue-400'} transition-all duration-1000`}
+                  ></div>
+                </div>
+                <span className={`text-[8px] ${isDanger ? 'text-red-500 font-bold' : 'text-gray-500'}`}>{hour.gust}kt</span>
+              </div>
+            );
+          })}
+        </div>
       </div>
+
+      {/* MÓDULO 2: DEFESA CIVIL (5-DAY OUTLOOK & RAIN CHART) */}
+      <div className="mt-2 z-10 border border-gray-800 bg-black/50 p-3">
+        <div className="text-[10px] text-yellow-500 border-b border-gray-800 pb-1 mb-2 font-bold tracking-widest">DEFESA CIVIL: ACUMULADO 5 DIAS</div>
+        <div className="grid grid-cols-5 gap-2">
+          {data.forecast.map((day, idx) => {
+            const rainHeight = Math.max((day.rain / maxRain5d) * 100, 2); 
+            const isHeavyRain = day.rain > 25;
+            return (
+              <div key={idx} className="flex flex-col items-center justify-end h-36 gap-1">
+                <span className={`text-[10px] font-bold ${idx === 0 ? 'text-white' : 'text-gray-500'}`}>{day.dayName}</span>
+                <div className="transform scale-90 my-1">{getWeatherIcon(day.code, 1)}</div>
+                <span className="text-[9px] text-gray-400">{day.min}°/{day.max}°</span>
+                
+                {/* Gráfico de Barras CSS Hidrológico */}
+                <div className="w-full bg-gray-900 h-12 relative mt-1 flex items-end justify-center rounded-t-sm border-b border-blue-900/50">
+                  <div 
+                    style={{ height: `${rainHeight}%` }} 
+                    className={`w-4/5 ${isHeavyRain ? 'bg-blue-500' : 'bg-blue-800'} transition-all duration-1000`}
+                  ></div>
+                </div>
+                <span className={`text-[9px] ${isHeavyRain ? 'text-blue-400 font-bold' : 'text-gray-600'}`}>
+                  {day.rain > 0 ? `${day.rain.toFixed(1)}mm` : '0mm'}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
     </div>
   );
 };
@@ -130,14 +164,19 @@ const TerminalCard = ({ data }) => {
 export default function App() {
   const [weatherData, setWeatherData] = useState({ bage: null, canoas: null });
   const [radar, setRadar] = useState({ host: "", path: "", time: "" });
-  const [threatLevel, setThreatLevel] = useState({ level: 'GREEN', text: 'MONITORAMENTO NORMAL' });
+  const [threatLevel, setThreatLevel] = useState({ level: 'GREEN', text: 'SINCRONIZANDO DADOS...' });
 
   useEffect(() => {
     const fetchWeather = async (lat, lon, city) => {
-      // API 100% Completa
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,is_day,precipitation,weather_code,wind_speed_10m,wind_gusts_10m,visibility,cloud_cover,pressure_msl&hourly=temperature_2m,weather_code,precipitation&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=America%2FSao_Paulo`;
+      // API 100% Completa (Adicionado Dew Point / Ponto de Orvalho)
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,is_day,precipitation,weather_code,wind_speed_10m,wind_gusts_10m,visibility,cloud_cover,pressure_msl,relative_humidity_2m&hourly=temperature_2m,weather_code,precipitation,wind_gusts_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,uv_index_max&timezone=America%2FSao_Paulo`;
       const res = await fetch(url);
       const json = await res.json();
+
+      // Cálculo simplificado do Ponto de Orvalho baseado na Umidade Relativa e Temp
+      const temp = json.current.temperature_2m;
+      const rh = json.current.relative_humidity_2m;
+      const dewPoint = Math.round(temp - ((100 - rh) / 5));
 
       const currentHourIdx = new Date().getHours();
       let hourlyForecast = [];
@@ -148,15 +187,29 @@ export default function App() {
             time: json.hourly.time[idx].split("T")[1],
             temp: Math.round(json.hourly.temperature_2m[idx]),
             code: json.hourly.weather_code[idx],
-            precip: json.hourly.precipitation[idx]
+            precip: json.hourly.precipitation[idx],
+            gust: Math.round(json.hourly.wind_gusts_10m[idx])
           });
         }
+      }
+
+      let daysForecast = [];
+      for (let i = 0; i < 5; i++) {
+        const dateObj = new Date(json.daily.time[i] + "T12:00:00");
+        const dayName = i === 0 ? "HOJE" : ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"][dateObj.getDay()];
+        daysForecast.push({
+          dayName: dayName,
+          code: json.daily.weather_code[i],
+          min: Math.round(json.daily.temperature_2m_min[i]),
+          max: Math.round(json.daily.temperature_2m_max[i]),
+          rain: json.daily.precipitation_sum[i]
+        });
       }
 
       return {
         city,
         current: {
-          temp: Math.round(json.current.temperature_2m),
+          temp: Math.round(temp),
           feels: Math.round(json.current.apparent_temperature),
           isDay: json.current.is_day,
           code: json.current.weather_code,
@@ -165,13 +218,16 @@ export default function App() {
           windSpd: Math.round(json.current.wind_speed_10m),
           gusts: Math.round(json.current.wind_gusts_10m),
           clouds: json.current.cloud_cover,
-          precip: json.current.precipitation
+          precip: json.current.precipitation,
+          dewPoint: dewPoint
         },
         daily: {
           max: Math.round(json.daily.temperature_2m_max[0]),
-          min: Math.round(json.daily.temperature_2m_min[0])
+          min: Math.round(json.daily.temperature_2m_min[0]),
+          uv: Math.round(json.daily.uv_index_max[0])
         },
-        hourly: hourlyForecast
+        hourly: hourlyForecast,
+        forecast: daysForecast
       };
     };
 
@@ -195,18 +251,18 @@ export default function App() {
       setWeatherData({ bage, canoas });
       await fetchRadar();
 
-      // INTELIGÊNCIA CRÍTICA DE VOO (VMC vs IMC)
+      // INTELIGÊNCIA CRÍTICA: PILOTO + DEFESA CIVIL
       const maxGust = Math.max(bage.current.gusts, canoas.current.gusts);
       const worstCode = Math.max(bage.current.code, canoas.current.code);
       const minVis = Math.min(bage.current.visibility, canoas.current.visibility);
+      const rainAccumulated = canoas.forecast[0].rain + bage.forecast[0].rain; // Soma da chuva de hoje nas duas bases
       
-      // Regras de Condição de Voo Visual e Alerta de Base
       if (minVis <= 3000 || maxGust >= 60 || worstCode >= 95) {
-        setThreatLevel({ level: 'RED', text: 'ALERTA SEVERO (NO-GO): VOO VFR SUSPENSO / CONDIÇÃO IMC' });
-      } else if (minVis <= 5000 || maxGust >= 40 || worstCode >= 51) {
-        setThreatLevel({ level: 'YELLOW', text: 'ATENÇÃO (MARGINAL): AVALIAR TETO E RAJADAS PARA MISSÃO' });
+        setThreatLevel({ level: 'RED', text: 'NO-GO VFR. Risco EVAM Alto. Defesa Civil: Alerta de Desastre Natural' });
+      } else if (minVis <= 5000 || maxGust >= 40 || worstCode >= 51 || rainAccumulated > 40) {
+        setThreatLevel({ level: 'YELLOW', text: 'STANDBY. Condições marginais VFR. Defesa Civil: Monitorar saturação do solo' });
       } else {
-        setThreatLevel({ level: 'GREEN', text: 'VMC (VISUAL): CONDIÇÕES NORMAIS DE OPERAÇÃO' });
+        setThreatLevel({ level: 'GREEN', text: 'VMC TOTAL. Envelope Liberado. Defesa Civil: Risco Hidrológico Baixo' });
       }
     };
 
@@ -239,26 +295,26 @@ export default function App() {
         .leaflet-tooltip-left::before { border-left-color: #30D158 !important; }
       `}</style>
 
-      {/* CABEÇALHO */}
+      {/* CABEÇALHO DE COMANDO JOINT (FAB + DC) */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-gray-800 pb-4">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-white tracking-[0.2em]">SISTEMA SDSOP / HACO</h1>
-          <p className="text-xs text-gray-500 mt-1 tracking-widest">MONITORAMENTO METEOROLÓGICO TÁTICO</p>
+          <h1 className="text-xl md:text-2xl font-bold text-white tracking-[0.2em]">C.O.C. METEOROLÓGICO HACO</h1>
+          <p className="text-xs text-[#30D158] mt-1 tracking-widest">AVIAÇÃO DE RESGATE & CONTROLE DE DESASTRES</p>
         </div>
         
-        <div className={`flex items-center gap-3 px-4 py-2 border ${threatColors[threatLevel.level]} animate-pulse`}>
-          <ThreatIcon size={18} />
+        <div className={`flex items-center gap-3 px-4 py-2 border ${threatColors[threatLevel.level]}`}>
+          <ThreatIcon size={20} className="animate-pulse" />
           <span className="text-xs font-bold tracking-widest">{threatLevel.text}</span>
         </div>
       </div>
       
-      {/* MÓDULOS DE ESTAÇÃO */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* MÓDULOS DE ESTAÇÃO (COM GRÁFICOS) */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <TerminalCard data={weatherData.bage} />
         <TerminalCard data={weatherData.canoas} />
       </div>
 
-      {/* TELA DO RADAR (Sem Animações) */}
+      {/* TELA DO RADAR (LIMPA E TÁTICA) */}
       <div className="border border-gray-800 relative bg-[#050505] mt-2">
         
         <div className="absolute top-4 left-4 z-[400] bg-black/90 p-3 border border-[#30D158]/50 shadow-[0_0_10px_rgba(48,209,88,0.1)] pointer-events-none">
@@ -273,7 +329,7 @@ export default function App() {
           </div>
         </div>
 
-        <div className="h-[500px] w-full bg-[#050505]">
+        <div className="h-[600px] w-full bg-[#050505]">
           <MapContainer 
             key={radar.path ? `map-${radar.path}` : "map-loading"}
             center={[-30.627, -52.646]} 
