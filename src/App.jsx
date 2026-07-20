@@ -18,11 +18,11 @@ const BASES = [
 ];
 
 const INITIAL_RIVERS = [
-  { id: 'taquari', name: 'Rio Taquari (Estrela)', cod: '86695000', level: null, alert: 15.00, flood: 19.00, lat: -29.50, lon: -51.96, backupLevel: 14.80 },
-  { id: 'guaiba', name: 'Guaíba (Cais Mauá)', cod: '87450004', level: null, alert: 2.50, flood: 3.00, lat: -30.03, lon: -51.23, backupLevel: 2.10 },
-  { id: 'cai', name: 'Rio Caí (S. S. do Caí)', cod: '87382000', level: null, alert: 7.00, flood: 10.00, lat: -29.58, lon: -51.37, backupLevel: 6.50 },
-  { id: 'sinos', name: 'Rio dos Sinos (S. Leopoldo)', cod: '87398000', level: null, alert: 4.30, flood: 4.50, lat: -29.76, lon: -51.14, backupLevel: 3.90 },
-  { id: 'uruguai', name: 'Rio Uruguai (Uruguaiana)', cod: '77150000', level: null, alert: 7.50, flood: 8.50, lat: -29.76, lon: -57.08, backupLevel: 6.80 }
+  { id: 'taquari', name: 'Rio Taquari (Estrela)', cod: '86695000', siteUrl: 'https://nivelguaiba.com.br/estrela', level: null, alert: 15.00, flood: 19.00, lat: -29.50, lon: -51.96 },
+  { id: 'guaiba', name: 'Guaíba (Cais Mauá)', cod: '87450004', siteUrl: 'https://nivelguaiba.com.br/portoalegre', level: null, alert: 2.50, flood: 3.00, lat: -30.03, lon: -51.23 },
+  { id: 'cai', name: 'Rio Caí (S. S. do Caí)', cod: '87382000', siteUrl: 'https://nivelguaiba.com.br/saosebastiaodocai', level: null, alert: 7.00, flood: 10.00, lat: -29.58, lon: -51.37 },
+  { id: 'sinos', name: 'Rio dos Sinos (S. Leopoldo)', cod: '87398000', siteUrl: 'https://nivelguaiba.com.br/saoleopoldo', level: null, alert: 4.30, flood: 4.50, lat: -29.76, lon: -51.14 },
+  { id: 'uruguai', name: 'Rio Uruguai (Uruguaiana)', cod: '77150000', siteUrl: null, level: null, alert: 7.50, flood: 8.50, lat: -29.76, lon: -57.08 }
 ];
 
 // ==========================================
@@ -437,41 +437,70 @@ export default function App() {
       } catch (error) { console.error("Erro ao buscar radar", error); }
     };
 
-// FETCH: RIOS DA ANA VIA SERVIDOR PRÓPRIO (VERCEL BACKEND)
+// FETCH: SISTEMA HÍBRIDO (ANA + SCRAPER DE SITES INDEPENDENTES)
     const fetchRivers = async () => {
       const updatedRivers = await Promise.all(INITIAL_RIVERS.map(async (rio) => {
+        let nivelAtual = null;
+        let fonte = 'OFFLINE';
+
         try {
-          // Bate na SUA própria API na Vercel (bypassa o bloqueio do governo)
-          const res = await fetch(`/api/ana?cod=${rio.cod}`);
+          // TÁTICA 1: Tenta o servidor oficial da ANA com Anti-Cache
+          const timestamp = new Date().getTime();
+          const urlANA = `http://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosTempoReal?codEstacao=${rio.cod}&_=${timestamp}`;
+          const proxyANA = `https://api.allorigins.win/raw?url=${encodeURIComponent(urlANA)}`;
           
-          if (!res.ok) throw new Error("Falha no servidor local da Vercel");
-          
-          const xmlText = await res.text();
-          const parser = new DOMParser();
-          const xml = parser.parseFromString(xmlText, "text/xml");
-          const niveis = xml.getElementsByTagName("Nivel");
-          
-          let nivelAtual = null;
-          // Procura a primeira medição válida
-          for (let i = 0; i < niveis.length; i++) {
-            const val = niveis[i].textContent;
-            if (val && !isNaN(val) && val.trim() !== "") {
-              nivelAtual = (parseFloat(val) / 100).toFixed(2);
-              break;
+          const resANA = await fetch(proxyANA, { cache: "no-store" });
+          if (resANA.ok) {
+            const xmlText = await resANA.text();
+            if (xmlText.includes('<Nivel>')) {
+              const parser = new DOMParser();
+              const xml = parser.parseFromString(xmlText, "text/xml");
+              const niveis = xml.getElementsByTagName("Nivel");
+              
+              for (let i = 0; i < niveis.length; i++) {
+                const val = niveis[i].textContent;
+                if (val && !isNaN(val) && val.trim() !== "") {
+                  nivelAtual = (parseFloat(val) / 100).toFixed(2);
+                  fonte = false; // false = 'SATÉLITE (REAL)'
+                  break;
+                }
+              }
             }
           }
-          
-          if (nivelAtual) {
-            return { ...rio, level: parseFloat(nivelAtual), isBackup: false };
-          } else {
-            return { ...rio, level: rio.backupLevel, isBackup: true };
-          }
-          
         } catch (e) {
-          console.warn(`Defesa Ativada (Rio ${rio.name}): Usando Contingência. Erro: ${e.message}`);
-          return { ...rio, level: rio.backupLevel, isBackup: true };
+          console.warn(`Governo falhou para ${rio.name}. Preparando Tática 2...`);
+        }
+
+        // TÁTICA 2: Se a ANA falhar, varre a internet (Scraper de Sites Comunitários)
+        if (!nivelAtual && rio.siteUrl) {
+          try {
+            const proxyWeb = `https://api.allorigins.win/raw?url=${encodeURIComponent(rio.siteUrl)}`;
+            const resWeb = await fetch(proxyWeb, { cache: "no-store" });
+            
+            if (resWeb.ok) {
+              const htmlText = await resWeb.text();
+              // Regex de Inteligência: Procura no texto do site a frase "é de X,XX m"
+              const match = htmlText.match(/é de\s+([0-9,]+)\s+m/i);
+              
+              if (match && match[1]) {
+                nivelAtual = match[1].replace(',', '.'); // Converte padrão BR para Americano
+                fonte = false; // Dado real recuperado da web
+                console.log(`Sucesso: Dado recuperado da web para ${rio.name}: ${nivelAtual}m`);
+              }
+            }
+          } catch (e) {
+            console.error(`Varredura web falhou para ${rio.name}`);
+          }
+        }
+
+        // RESULTADO FINAL
+        if (nivelAtual) {
+          return { ...rio, level: parseFloat(nivelAtual), isBackup: fonte };
+        } else {
+          return { ...rio, level: null, isBackup: true }; // Se tudo falhar, assume offline
         }
       }));
+      
       setRiverData(updatedRivers);
     };
 
