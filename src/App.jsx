@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { Cloud, CloudDrizzle, CloudLightning, CloudRain, CloudSun, Moon, Sun, Wind, Droplets, Eye, Gauge, AlertTriangle, CheckCircle2, Thermometer, Compass, Sunrise, Sunset, PlaneTakeoff, ShieldAlert, Activity, Crosshair, CloudCog, Siren, Map as MapIcon } from 'lucide-react';
+import { Cloud, CloudDrizzle, CloudLightning, CloudRain, CloudSun, Moon, Sun, Wind, Droplets, Eye, Gauge, AlertTriangle, CheckCircle2, Thermometer, Compass, Sunrise, Sunset, PlaneTakeoff, ShieldAlert, Activity, Crosshair, CloudCog, Siren, Map as MapIcon, Waves, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { MapContainer, TileLayer, CircleMarker, Tooltip, Circle, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 
 // ==========================================
-// 1. CONFIGURAÇÕES GLOBAIS - BASES RS
+// 1. CONFIGURAÇÕES GLOBAIS
 // ==========================================
 const BASES = [
-  { id: 'RS-GENERAL', name: 'SITUAÇÃO GERAL DO ESTADO', lat: -30.0, lon: -53.2 },
-  { id: 'SBCO', name: 'CANOAS (HACO)', lat: -29.94, lon: -51.15 },
+  { id: 'RS-GENERAL', name: 'PANORAMA ESTADUAL RS', lat: -30.0, lon: -53.2 },
+  { id: 'HYDRO', name: 'BACIAS HIDROGRÁFICAS', lat: -29.8, lon: -51.5 },
+  { id: 'SBCO', name: 'CANOAS (BACO)', lat: -29.94, lon: -51.15 },
   { id: 'SBPA', name: 'PORTO ALEGRE', lat: -29.99, lon: -51.17 },
   { id: 'SBSM', name: 'SANTA MARIA', lat: -29.71, lon: -53.69 },
   { id: 'SBCX', name: 'CAXIAS DO SUL', lat: -29.20, lon: -51.19 },
@@ -16,8 +17,18 @@ const BASES = [
   { id: 'SBBG', name: 'BAGÉ', lat: -31.33, lon: -54.11 }
 ];
 
+// MOCK TÁTICO DOS RIOS (Baseado em cotas reais da CPRM/SGB para demonstração)
+const RIVER_BASINS = [
+  { id: 'taquari', name: 'Rio Taquari (Estrela/Lajeado)', level: 19.50, alert: 15.00, flood: 19.00, trend: 'up', lat: -29.50, lon: -51.96 },
+  { id: 'guaiba', name: 'Lago Guaíba (Cais Mauá)', level: 2.65, alert: 2.50, flood: 3.00, trend: 'up', lat: -30.03, lon: -51.23 },
+  { id: 'cai', name: 'Rio Caí (S. S. do Caí)', level: 8.50, alert: 7.00, flood: 10.00, trend: 'down', lat: -29.58, lon: -51.37 },
+  { id: 'sinos', name: 'Rio dos Sinos (S. Leopoldo)', level: 3.80, alert: 4.30, flood: 4.50, trend: 'stable', lat: -29.76, lon: -51.14 },
+  { id: 'jacui', name: 'Rio Jacuí (Rio Pardo)', level: 8.20, alert: 16.00, flood: 18.00, trend: 'stable', lat: -29.99, lon: -52.37 },
+  { id: 'uruguai', name: 'Rio Uruguai (Uruguaiana)', level: 7.10, alert: 7.50, flood: 8.50, trend: 'up', lat: -29.76, lon: -57.08 }
+];
+
 // ==========================================
-// 2. FUNÇÕES METEOROLÓGICAS (TRADUZIDAS)
+// 2. FUNÇÕES METEOROLÓGICAS
 // ==========================================
 const getWeatherIcon = (code, isDay = 1) => {
   if (code === 0) return isDay ? <Sun className="text-yellow-400 drop-shadow-md w-8 h-8 lg:w-12 lg:h-12" /> : <Moon className="text-blue-300 drop-shadow-md w-8 h-8 lg:w-12 lg:h-12" />;
@@ -31,15 +42,9 @@ const getWeatherIcon = (code, isDay = 1) => {
 };
 
 const getFlightCategory = (visibility, windGust) => {
-  if (visibility < 3000 || windGust > 50) return { 
-    rule: "VOO RESTRITO", color: "bg-rose-500 text-white border-rose-500", status: "CRÍTICO (TEMPO FECHADO)", dot: "bg-rose-500 shadow-[0_0_8px_#f43f5e]" 
-  };
-  if (visibility < 5000 || windGust > 35) return { 
-    rule: "ATENÇÃO", color: "bg-amber-500 text-black border-amber-500", status: "MARGINAL (VISIB. REDUZIDA)", dot: "bg-amber-500 shadow-[0_0_8px_#f59e0b]" 
-  };
-  return { 
-    rule: "LIBERADO", color: "bg-emerald-500/20 text-emerald-400 border-emerald-500/50", status: "VISUAL (CÉU LIMPO)", dot: "bg-emerald-500" 
-  };
+  if (visibility < 3000 || windGust > 50) return { rule: "VOO RESTRITO", color: "bg-rose-500 text-white border-rose-500", status: "CRÍTICO (TEMPO FECHADO)", dot: "bg-rose-500 shadow-[0_0_8px_#f43f5e]" };
+  if (visibility < 5000 || windGust > 35) return { rule: "ATENÇÃO", color: "bg-amber-500 text-black border-amber-500", status: "MARGINAL (VISIB. REDUZIDA)", dot: "bg-amber-500 shadow-[0_0_8px_#f59e0b]" };
+  return { rule: "LIBERADO", color: "bg-emerald-500/20 text-emerald-400 border-emerald-500/50", status: "VISUAL (CÉU LIMPO)", dot: "bg-emerald-500" };
 };
 
 const getWindDirection = (degree) => {
@@ -66,14 +71,89 @@ const MapAutoTracker = ({ center, zoom }) => {
 };
 
 // ==========================================
-// 4. COMPONENTE: VISÃO GERAL ESTADUAL (DEFESA CIVIL)
+// 4. COMPONENTE: BACIAS HIDROGRÁFICAS (NOVO)
+// ==========================================
+const HydrologyTerminal = () => {
+  const getTrendIcon = (trend) => {
+    if (trend === 'up') return <TrendingUp className="text-rose-500 w-4 h-4" />;
+    if (trend === 'down') return <TrendingDown className="text-emerald-500 w-4 h-4" />;
+    return <Minus className="text-slate-400 w-4 h-4" />;
+  };
+
+  const getRiverStatus = (river) => {
+    if (river.level >= river.flood) return { color: "bg-rose-500", text: "INUNDAÇÃO", bg: "bg-rose-900/20 border-rose-500/50" };
+    if (river.level >= river.alert) return { color: "bg-amber-500", text: "ALERTA", bg: "bg-amber-900/20 border-amber-500/50" };
+    return { color: "bg-blue-500", text: "NORMAL", bg: "bg-slate-900/80 border-slate-700/50" };
+  };
+
+  return (
+    <div className="bg-[#0b1120]/90 backdrop-blur-xl rounded-2xl p-4 lg:p-6 border border-slate-700 shadow-2xl h-full overflow-y-auto custom-scrollbar">
+      <div className="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
+        <div>
+          <div className="flex items-center gap-1 text-[9px] text-blue-400 font-bold tracking-widest mb-1">
+            <Waves size={10} /> SGB / CPRM / ANA
+          </div>
+          <h2 className="text-xl lg:text-2xl font-black text-white">BACIAS HIDROGRÁFICAS</h2>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        {RIVER_BASINS.map(river => {
+          const status = getRiverStatus(river);
+          const maxLevel = Math.max(river.flood * 1.2, river.level * 1.1); // Calcula o teto do gráfico
+          const levelPct = (river.level / maxLevel) * 100;
+          const alertPct = (river.alert / maxLevel) * 100;
+          const floodPct = (river.flood / maxLevel) * 100;
+
+          return (
+            <div key={river.id} className={`p-4 rounded-xl border ${status.bg} transition-all`}>
+              <div className="flex justify-between items-center mb-2">
+                <span className="font-bold text-slate-200">{river.name}</span>
+                <div className="flex items-center gap-2">
+                  {getTrendIcon(river.trend)}
+                  <span className={`text-lg font-black ${status.text === 'INUNDAÇÃO' ? 'text-rose-400' : status.text === 'ALERTA' ? 'text-amber-400' : 'text-white'}`}>
+                    {river.level.toFixed(2)}m
+                  </span>
+                </div>
+              </div>
+
+              {/* Régua Hidrológica Digital */}
+              <div className="relative w-full h-3 bg-slate-800 rounded-full mt-4 mb-2">
+                {/* Marcadores de Risco */}
+                <div className="absolute top-[-14px] w-0.5 h-6 bg-amber-500 z-10" style={{ left: `${alertPct}%` }}>
+                  <span className="absolute -top-3 -left-3 text-[8px] text-amber-500 font-bold">ALERTA</span>
+                </div>
+                <div className="absolute top-[-14px] w-0.5 h-6 bg-rose-500 z-10" style={{ left: `${floodPct}%` }}>
+                  <span className="absolute -top-3 -left-4 text-[8px] text-rose-500 font-bold">INUNDAÇÃO</span>
+                </div>
+                
+                {/* Preenchimento de Água */}
+                <div className={`h-full rounded-full transition-all duration-1000 ${status.color}`} style={{ width: `${levelPct}%` }}></div>
+              </div>
+              <div className="flex justify-between text-[9px] text-slate-500 font-bold mt-1">
+                <span>0.00m</span>
+                <span className="text-amber-500/70">{river.alert.toFixed(2)}m</span>
+                <span className="text-rose-500/70">{river.flood.toFixed(2)}m</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+// ==========================================
+// 5. COMPONENTE: VISÃO GERAL ESTADUAL (DEFESA CIVIL)
 // ==========================================
 const GeneralOverview = ({ stations }) => {
-  const enchenteRisks = stations.filter(s => s.forecast[0].rain > 30);
   const vendavalRisks = stations.filter(s => s.current.gusts > 45);
   const nevoeiroRisks = stations.filter(s => s.current.visibility < 3000);
+  
+  // Rios em Risco (Alerta ou Inundação)
+  const riosEmRisco = RIVER_BASINS.filter(r => r.level >= r.alert);
 
-  const hasAlerts = enchenteRisks.length > 0 || vendavalRisks.length > 0 || nevoeiroRisks.length > 0;
+  const hasAlerts = vendavalRisks.length > 0 || nevoeiroRisks.length > 0 || riosEmRisco.length > 0;
 
   return (
     <div className="bg-[#0b1120]/90 backdrop-blur-xl rounded-2xl p-4 lg:p-6 border border-slate-700 shadow-2xl h-full overflow-y-auto custom-scrollbar">
@@ -86,49 +166,50 @@ const GeneralOverview = ({ stations }) => {
         <div className="flex flex-col items-center justify-center py-10 text-emerald-400 bg-emerald-900/10 border border-emerald-900/30 rounded-xl">
           <CheckCircle2 size={48} className="mb-3"/>
           <p className="font-bold text-center">CONDIÇÕES NORMAIS NO ESTADO</p>
-          <p className="text-xs text-emerald-500 mt-1">Nenhum alerta crítico para a aviação ou solo.</p>
+          <p className="text-xs text-emerald-500 mt-1">Nenhum alerta para aviação ou cheias.</p>
         </div>
       ) : (
         <div className="space-y-4">
-          {/* Alertas de Tempestade / Enchente */}
-          {enchenteRisks.length > 0 && (
-            <div className="bg-blue-900/20 border border-blue-500/30 p-4 rounded-xl">
-              <h3 className="text-blue-400 font-bold flex items-center gap-2 mb-2 text-sm"><Droplets size={16}/> RISCO HIDROLÓGICO (CHUVA FORTE)</h3>
+          
+          {/* MÓDULO NOVO: ALERTAS HIDROLÓGICOS */}
+          {riosEmRisco.length > 0 && (
+            <div className="bg-rose-900/20 border border-rose-500/50 p-4 rounded-xl shadow-[0_0_15px_rgba(244,63,94,0.1)]">
+              <h3 className="text-rose-500 font-black flex items-center gap-2 mb-3 text-sm tracking-widest"><Waves size={16}/> RISCO DE ENCHENTE / INUNDAÇÃO</h3>
               <div className="grid gap-2">
-                {enchenteRisks.map(s => (
-                  <div key={s.id} className="flex justify-between items-center text-xs bg-slate-900/50 p-2 rounded">
-                    <span className="text-slate-300 font-bold">{s.name}</span>
-                    <span className="text-blue-400 font-black">{s.forecast[0].rain} mm/dia</span>
+                {riosEmRisco.map(r => (
+                  <div key={r.id} className="flex justify-between items-center text-xs bg-slate-900/80 p-2.5 rounded border border-rose-500/30">
+                    <span className="text-slate-200 font-bold">{r.name}</span>
+                    <span className={`font-black px-2 py-0.5 rounded ${r.level >= r.flood ? 'bg-rose-500 text-white' : 'bg-amber-500 text-black'}`}>
+                      {r.level.toFixed(2)}m ({r.level >= r.flood ? 'INUNDAÇÃO' : 'ALERTA'})
+                    </span>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Alertas de Vendaval */}
           {vendavalRisks.length > 0 && (
-            <div className="bg-rose-900/20 border border-rose-500/30 p-4 rounded-xl">
-              <h3 className="text-rose-400 font-bold flex items-center gap-2 mb-2 text-sm"><Wind size={16}/> ALERTA DE VENDAVAL (RAJADAS)</h3>
+            <div className="bg-amber-900/20 border border-amber-500/30 p-4 rounded-xl">
+              <h3 className="text-amber-500 font-bold flex items-center gap-2 mb-2 text-sm"><Wind size={16}/> ALERTA DE VENDAVAL / TEMPESTADE</h3>
               <div className="grid gap-2">
                 {vendavalRisks.map(s => (
                   <div key={s.id} className="flex justify-between items-center text-xs bg-slate-900/50 p-2 rounded">
                     <span className="text-slate-300 font-bold">{s.name}</span>
-                    <span className="text-rose-400 font-black">{s.current.gusts} km/h</span>
+                    <span className="text-amber-400 font-black">{s.current.gusts} km/h</span>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Alertas de Nevoeiro / Teto Baixo */}
           {nevoeiroRisks.length > 0 && (
-            <div className="bg-amber-900/20 border border-amber-500/30 p-4 rounded-xl">
-              <h3 className="text-amber-400 font-bold flex items-center gap-2 mb-2 text-sm"><Eye size={16}/> TETO BAIXO / NEVOEIRO</h3>
+            <div className="bg-slate-800/50 border border-slate-600 p-4 rounded-xl">
+              <h3 className="text-slate-300 font-bold flex items-center gap-2 mb-2 text-sm"><Eye size={16}/> TETO BAIXO / NEVOEIRO</h3>
               <div className="grid gap-2">
                 {nevoeiroRisks.map(s => (
                   <div key={s.id} className="flex justify-between items-center text-xs bg-slate-900/50 p-2 rounded">
                     <span className="text-slate-300 font-bold">{s.name}</span>
-                    <span className="text-amber-400 font-black">Visib. {s.current.visibility}m</span>
+                    <span className="text-white font-black">Visib. {s.current.visibility}m</span>
                   </div>
                 ))}
               </div>
@@ -141,36 +222,27 @@ const GeneralOverview = ({ stations }) => {
 };
 
 // ==========================================
-// 5. COMPONENTE: TERMINAL DO AEROPORTO (BASE)
+// 6. COMPONENTE: TERMINAL DO AEROPORTO (COMPLETO)
 // ==========================================
 const StationTerminal = ({ data }) => {
   if (!data) return <div className="bg-slate-900/50 rounded-2xl animate-pulse h-full"></div>;
-
   const flightData = getFlightCategory(data.current.visibility, data.current.gusts);
 
   return (
     <div className="bg-[#0b1120]/90 backdrop-blur-xl rounded-2xl p-4 lg:p-5 border border-slate-700 shadow-2xl h-full overflow-y-auto custom-scrollbar relative">
-      
-      {/* Luz de Fundo (Aviso Visual de Risco) */}
       <div className={`absolute top-0 right-0 w-32 h-32 blur-[80px] rounded-full opacity-20 pointer-events-none ${flightData.rule === 'VOO RESTRITO' ? 'bg-rose-500' : flightData.rule === 'ATENÇÃO' ? 'bg-amber-500' : 'bg-cyan-500'}`}></div>
 
-      {/* Cabeçalho da Base */}
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-2 border-b border-slate-700/50 pb-3 mb-4">
         <div>
-          <div className="flex items-center gap-1 text-[9px] text-cyan-500 font-bold tracking-widest mb-1">
-            <Crosshair size={10} /> TELEMETRIA DIRECIONADA
-          </div>
+          <div className="flex items-center gap-1 text-[9px] text-cyan-500 font-bold tracking-widest mb-1"><Crosshair size={10} /> TELEMETRIA DIRECIONADA</div>
           <h2 className="text-xl lg:text-2xl font-black text-white">{data.name}</h2>
         </div>
         <div className="flex flex-col items-start xl:items-end gap-1">
-          <span className={`px-2 py-1 rounded text-[10px] font-bold border ${flightData.color} tracking-widest shadow-lg`}>
-            {flightData.rule}
-          </span>
+          <span className={`px-2 py-1 rounded text-[10px] font-bold border ${flightData.color} tracking-widest shadow-lg`}>{flightData.rule}</span>
           <span className="text-[10px] text-slate-400 font-bold">{flightData.status}</span>
         </div>
       </div>
 
-      {/* Temperatura e Sol */}
       <div className="flex items-center justify-between pb-4 border-b border-slate-800/50 mb-4">
         <div className="flex items-center gap-3 lg:gap-4">
           {getWeatherIcon(data.current.code, data.current.isDay)}
@@ -185,7 +257,6 @@ const StationTerminal = ({ data }) => {
         </div>
       </div>
 
-      {/* Bloco 1: Condições de Aviação (Vento, Visibilidade, Pressão) */}
       <h3 className="text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-wider">Aviação & Atmosfera</h3>
       <div className="grid grid-cols-2 gap-2 mb-4">
         <div className="bg-slate-900/80 p-2 lg:p-3 rounded-lg border border-slate-700/50">
@@ -206,7 +277,6 @@ const StationTerminal = ({ data }) => {
         </div>
       </div>
 
-      {/* Bloco 2: Saúde Operacional & Solo */}
       <h3 className="text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-wider">Solo & Condições Clínicas</h3>
       <div className="grid grid-cols-2 gap-2 mb-4">
         <div className="bg-slate-900/80 p-2 lg:p-3 rounded-lg border border-slate-700/50 flex justify-between items-center">
@@ -227,7 +297,6 @@ const StationTerminal = ({ data }) => {
         </div>
       </div>
 
-      {/* Bloco 3: Previsão de Precipitação 6 Horas */}
       <div className="mt-4 p-3 lg:p-4 border border-slate-700/50 bg-slate-900/40 rounded-xl">
         <div className="text-[10px] text-cyan-400 font-bold tracking-widest mb-3">PRECIPITAÇÃO (PRÓXIMAS 6 HORAS)</div>
         <div className="flex justify-between items-end gap-1">
@@ -244,7 +313,6 @@ const StationTerminal = ({ data }) => {
         </div>
       </div>
 
-      {/* Bloco 4: Defesa Civil (5 Dias) */}
       <div className="mt-4 p-3 lg:p-4 border border-slate-700/50 bg-slate-900/40 rounded-xl">
         <div className="text-[10px] text-amber-400 font-bold tracking-widest mb-3 flex items-center gap-2"><ShieldAlert size={12}/> DEFESA CIVIL (5 DIAS)</div>
         <div className="grid grid-cols-5 gap-1.5 lg:gap-2">
@@ -260,30 +328,27 @@ const StationTerminal = ({ data }) => {
           ))}
         </div>
       </div>
-
     </div>
   );
 };
 
 // ==========================================
-// 6. MOTOR PRINCIPAL (APP)
+// 7. MOTOR PRINCIPAL (APP C2)
 // ==========================================
 export default function App() {
   const [stationsData, setStationsData] = useState([]);
   const [activeId, setActiveId] = useState('RS-GENERAL');
   
-  // Controle do Radar Animado
   const [radarFrames, setRadarFrames] = useState([]);
   const [activeFrameIndex, setActiveFrameIndex] = useState(0);
   const [radarHost, setRadarHost] = useState("");
   
   const [globalThreat, setGlobalThreat] = useState({ level: 'GREEN', text: 'INICIALIZANDO SISTEMAS...' });
 
-  // Buscar Dados Meteorológicos de todas as bases
   useEffect(() => {
     const fetchWeather = async () => {
       try {
-        const results = await Promise.all(BASES.slice(1).map(async (base) => {
+        const results = await Promise.all(BASES.slice(2).map(async (base) => {
           const url = `https://api.open-meteo.com/v1/forecast?latitude=${base.lat}&longitude=${base.lon}&current=temperature_2m,apparent_temperature,is_day,precipitation,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,relative_humidity_2m,pressure_msl,cloud_cover&hourly=temperature_2m,weather_code,precipitation,wind_gusts_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,uv_index_max,sunrise,sunset&timezone=America%2FSao_Paulo`;
           const res = await fetch(url);
           const json = await res.json();
@@ -321,39 +386,22 @@ export default function App() {
           }
 
           return {
-            id: base.id,
-            name: base.name,
-            lat: base.lat,
-            lon: base.lon,
+            id: base.id, name: base.name, lat: base.lat, lon: base.lon,
             current: {
-              temp: Math.round(temp),
-              feels: Math.round(json.current.apparent_temperature),
-              isDay: json.current.is_day,
-              code: json.current.weather_code,
-              visibility: json.current.visibility || 10000,
-              pressure: Math.round(json.current.pressure_msl),
-              windSpd: Math.round(json.current.wind_speed_10m),
-              windDir: json.current.wind_direction_10m,
-              gusts: Math.round(json.current.wind_gusts_10m || json.current.wind_speed_10m),
-              humidity: rh,
-              clouds: json.current.cloud_cover || 0,
-              dewPoint: dewPoint
+              temp: Math.round(temp), feels: Math.round(json.current.apparent_temperature), isDay: json.current.is_day,
+              code: json.current.weather_code, visibility: json.current.visibility || 10000, pressure: Math.round(json.current.pressure_msl),
+              windSpd: Math.round(json.current.wind_speed_10m), windDir: json.current.wind_direction_10m,
+              gusts: Math.round(json.current.wind_gusts_10m || json.current.wind_speed_10m), humidity: rh, clouds: json.current.cloud_cover || 0, dewPoint: dewPoint
             },
             daily: {
-              max: Math.round(json.daily.temperature_2m_max[0]),
-              min: Math.round(json.daily.temperature_2m_min[0]),
-              uv: Math.round(json.daily.uv_index_max[0]),
-              sunrise: formatTime(json.daily.sunrise[0]),
-              sunset: formatTime(json.daily.sunset[0])
+              max: Math.round(json.daily.temperature_2m_max[0]), min: Math.round(json.daily.temperature_2m_min[0]),
+              uv: Math.round(json.daily.uv_index_max[0]), sunrise: formatTime(json.daily.sunrise[0]), sunset: formatTime(json.daily.sunset[0])
             },
-            hourly: hourlyForecast,
-            forecast: daysForecast
+            hourly: hourlyForecast, forecast: daysForecast
           };
         }));
-        
         setStationsData(results);
 
-        // Lógica de Ameaça Global
         const maxGust = Math.max(...results.map(r => r.current.gusts));
         const minVis = Math.min(...results.map(r => r.current.visibility));
 
@@ -364,13 +412,9 @@ export default function App() {
         } else {
           setGlobalThreat({ level: 'GREEN', text: 'CONDIÇÕES GERAIS FAVORÁVEIS. OPERAÇÕES LIBERADAS NO RS.' });
         }
-
-      } catch (error) {
-        console.error("Erro ao buscar dados meteorológicos", error);
-      }
+      } catch (error) { console.error("Erro ao buscar dados", error); }
     };
 
-    // Buscar imagens do Radar Rainviewer (Passado + Projeção Futura)
     const fetchRadar = async () => {
       try {
         const res = await fetch("https://api.rainviewer.com/public/weather-maps.json");
@@ -379,27 +423,20 @@ export default function App() {
         const pastFrames = data.radar.past.slice(-5).map(f => ({ ...f, type: 'PAST' }));
         const nowcastFrames = data.radar.nowcast.slice(0, 3).map(f => ({ ...f, type: 'NOWCAST' }));
         setRadarFrames([...pastFrames, ...nowcastFrames]);
-      } catch (error) {
-        console.error("Erro ao buscar radar", error);
-      }
+      } catch (error) { console.error("Erro ao buscar radar", error); }
     };
 
-    fetchWeather();
-    fetchRadar();
+    fetchWeather(); fetchRadar();
     const interval = setInterval(() => { fetchWeather(); fetchRadar(); }, 1000 * 60 * 15);
     return () => clearInterval(interval);
   }, []);
 
-  // Motor do Loop do Radar (Atualiza frame a cada 1.5s)
   useEffect(() => {
     if (radarFrames.length === 0) return;
-    const loop = setInterval(() => {
-      setActiveFrameIndex((prev) => (prev + 1) % radarFrames.length);
-    }, 1500);
+    const loop = setInterval(() => { setActiveFrameIndex((prev) => (prev + 1) % radarFrames.length); }, 1500);
     return () => clearInterval(loop);
   }, [radarFrames]);
 
-  // Loading Screen
   if (stationsData.length === 0) {
     return (
       <div className="min-h-screen bg-[#020617] flex items-center justify-center">
@@ -415,14 +452,11 @@ export default function App() {
   const activeFrameData = radarFrames[activeFrameIndex];
   
   const statusColors = {
-    RED: "bg-rose-500/10 border-rose-500/40 text-rose-400",
-    YELLOW: "bg-amber-500/10 border-amber-500/40 text-amber-400",
-    GREEN: "bg-emerald-500/10 border-emerald-500/40 text-emerald-400"
+    RED: "bg-rose-500/10 border-rose-500/40 text-rose-400", YELLOW: "bg-amber-500/10 border-amber-500/40 text-amber-400", GREEN: "bg-emerald-500/10 border-emerald-500/40 text-emerald-400"
   };
 
   return (
-    <div className="min-h-screen bg-[#020617] p-2 md:p-4 text-slate-200 font-sans flex flex-col gap-3 overflow-hidden h-screen"
-         style={{ background: 'radial-gradient(circle at top right, #0f172a, #020617)' }}>
+    <div className="min-h-screen bg-[#020617] p-2 md:p-4 text-slate-200 font-sans flex flex-col gap-3 overflow-hidden h-screen" style={{ background: 'radial-gradient(circle at top right, #0f172a, #020617)' }}>
       
       <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -448,7 +482,7 @@ export default function App() {
         </div>
       </div>
       
-      {/* BARRA DE SELEÇÃO DE CIDADES (ABAS) */}
+      {/* ABAS DE NAVEGAÇÃO */}
       <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar w-full shrink-0 border-b border-slate-800">
         {BASES.map((base) => {
           const stationData = stationsData.find(s => s.id === base.id);
@@ -457,10 +491,14 @@ export default function App() {
           
           return (
             <button key={base.id} onClick={() => setActiveId(base.id)}
-              className={`flex-shrink-0 flex items-center gap-3 px-3 lg:px-4 py-2 rounded-t-lg transition-all duration-300 border-x border-t ${
-                isSelected ? 'bg-slate-800/80 border-slate-600 shadow-md' : 'bg-slate-900/30 border-slate-800/50 hover:bg-slate-800/50'
-              }`}>
-              {flightData ? <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${flightData.dot}`}></div> : <MapIcon size={12} className={isSelected ? "text-cyan-400" : "text-slate-500"}/>}
+              className={`flex-shrink-0 flex items-center gap-3 px-3 lg:px-4 py-2 rounded-t-lg transition-all duration-300 border-x border-t ${isSelected ? 'bg-slate-800/80 border-slate-600 shadow-md' : 'bg-slate-900/30 border-slate-800/50 hover:bg-slate-800/50'}`}>
+              {base.id === 'HYDRO' ? (
+                <Waves size={12} className={isSelected ? "text-blue-400" : "text-slate-500"}/>
+              ) : flightData ? (
+                <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${flightData.dot}`}></div>
+              ) : (
+                <MapIcon size={12} className={isSelected ? "text-cyan-400" : "text-slate-500"}/>
+              )}
               <div className="flex flex-col items-start text-left">
                 <span className={`text-[10px] lg:text-xs font-bold whitespace-nowrap ${isSelected ? 'text-white' : 'text-slate-400'}`}>{base.name}</span>
                 {stationData && <span className={`text-[9px] font-bold ${isSelected ? 'text-cyan-400' : 'text-slate-600'}`}>{stationData.current.temp}°C</span>}
@@ -470,22 +508,23 @@ export default function App() {
         })}
       </div>
 
-      {/* ÁREA PRINCIPAL (PAINEL + MAPA) */}
+      {/* ÁREA PRINCIPAL */}
       <div className="flex-1 flex flex-col lg:flex-row gap-3 overflow-hidden min-h-0">
         
-        {/* COLUNA ESQUERDA: DADOS */}
+        {/* COLUNA ESQUERDA */}
         <div className="w-full lg:w-[400px] xl:w-[500px] shrink-0 h-[50%] lg:h-full overflow-hidden">
            {activeId === 'RS-GENERAL' ? (
              <GeneralOverview stations={stationsData} />
+           ) : activeId === 'HYDRO' ? (
+             <HydrologyTerminal />
            ) : (
              <StationTerminal data={stationsData.find(s => s.id === activeId)} />
            )}
         </div>
 
-        {/* COLUNA DIREITA: MAPA / RADAR METEOROLÓGICO */}
+        {/* COLUNA DIREITA (RADAR) */}
         <div className="flex-1 relative rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] border border-slate-700 p-1.5 bg-slate-900/30 backdrop-blur-sm h-[50%] lg:h-full">
           
-          {/* HUD do Radar */}
           <div className="absolute top-4 left-4 z-[400] bg-[#020617]/90 p-3 rounded-xl border border-slate-700/50 shadow-2xl pointer-events-none backdrop-blur-md">
             <div className="flex items-center gap-2 mb-1">
               <span className="bg-rose-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded animate-pulse">RADAR</span>
@@ -500,40 +539,35 @@ export default function App() {
           </div>
 
           <div className="h-full w-full rounded-xl overflow-hidden bg-[#020617]">
-            <MapContainer 
-              center={[activeBase.lat, activeBase.lon]} 
-              zoom={activeId === 'RS-GENERAL' ? 7 : 10} 
-              maxZoom={12} minZoom={5} zoomControl={true} scrollWheelZoom={true} 
-              style={{ height: '100%', width: '100%', zIndex: 1 }}
-            >
+            <MapContainer center={[activeBase.lat, activeBase.lon]} zoom={activeId === 'RS-GENERAL' || activeId === 'HYDRO' ? 7 : 10} maxZoom={12} minZoom={5} zoomControl={true} scrollWheelZoom={true} style={{ height: '100%', width: '100%', zIndex: 1 }}>
               <MapResizer />
-              <MapAutoTracker center={[activeBase.lat, activeBase.lon]} zoom={activeId === 'RS-GENERAL' ? 7 : 10} />
-
-              {/* Mapa Base Escuro */}
+              <MapAutoTracker center={[activeBase.lat, activeBase.lon]} zoom={activeId === 'RS-GENERAL' || activeId === 'HYDRO' ? 7 : 10} />
               <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" className="dark-base-map" maxZoom={19} />
               
-              {/* Renderização do Radar Animado */}
               {radarHost && radarFrames.map((frame, idx) => (
-                <TileLayer
-                  key={`${frame.path}-${idx}`}
-                  url={`${radarHost}${frame.path}/256/{z}/{x}/{y}/6/1_1.png`}
-                  opacity={idx === activeFrameIndex ? 0.85 : 0}
-                  maxNativeZoom={6} maxZoom={12} zIndex={10 + idx}
-                />
+                <TileLayer key={`${frame.path}-${idx}`} url={`${radarHost}${frame.path}/256/{z}/{x}/{y}/6/1_1.png`} opacity={idx === activeFrameIndex ? 0.85 : 0} maxNativeZoom={6} maxZoom={12} zIndex={10 + idx} />
               ))}
 
-              {/* Marcadores de Aeroportos */}
-              {stationsData.map((base) => {
-                const isTarget = base.id === activeId;
-                return (
-                  <React.Fragment key={base.id}>
-                    <Circle center={[base.lat, base.lon]} radius={isTarget ? 20000 : 10000} color={isTarget ? '#22d3ee' : '#64748b'} weight={isTarget ? 2 : 1} fill={false} opacity={0.5} dashArray={isTarget ? "none" : "3, 6"} />
-                    <CircleMarker center={[base.lat, base.lon]} radius={isTarget ? 6 : 4} color="#000" weight={2} fillColor={isTarget ? '#22d3ee' : '#94a3b8'} fillOpacity={1} zIndexOffset={isTarget ? 200 : 100}>
-                      <Tooltip direction="top" offset={[0, -10]} opacity={1} permanent={isTarget}>{base.id}</Tooltip>
-                    </CircleMarker>
-                  </React.Fragment>
-                );
-              })}
+              {/* Pinos no Mapa */}
+              {activeId === 'HYDRO' ? (
+                 RIVER_BASINS.map(r => (
+                   <CircleMarker key={r.id} center={[r.lat, r.lon]} radius={6} color="#3b82f6" fillColor="#60a5fa" fillOpacity={1} zIndexOffset={200}>
+                     <Tooltip direction="top" offset={[0, -10]} opacity={1} permanent>{r.name}</Tooltip>
+                   </CircleMarker>
+                 ))
+              ) : (
+                stationsData.map((base) => {
+                  const isTarget = base.id === activeId;
+                  return (
+                    <React.Fragment key={base.id}>
+                      <Circle center={[base.lat, base.lon]} radius={isTarget ? 20000 : 10000} color={isTarget ? '#22d3ee' : '#64748b'} weight={isTarget ? 2 : 1} fill={false} opacity={0.5} dashArray={isTarget ? "none" : "3, 6"} />
+                      <CircleMarker center={[base.lat, base.lon]} radius={isTarget ? 6 : 4} color="#000" weight={2} fillColor={isTarget ? '#22d3ee' : '#94a3b8'} fillOpacity={1} zIndexOffset={isTarget ? 200 : 100}>
+                        <Tooltip direction="top" offset={[0, -10]} opacity={1} permanent={isTarget}>{base.id}</Tooltip>
+                      </CircleMarker>
+                    </React.Fragment>
+                  );
+                })
+              )}
             </MapContainer>
           </div>
         </div>
