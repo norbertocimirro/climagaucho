@@ -30,13 +30,13 @@ const getWeatherIcon = (code, isDay = 1) => {
 };
 
 const getFlightCategory = (visibility, windGust) => {
-  if (visibility < 3000 || windGust > 50) return { rule: "IFR", color: "bg-rose-500/20 text-rose-400 border-rose-500/50", status: "CRÍTICO (INSTRUMENTOS)" };
-  if (visibility < 5000 || windGust > 35) return { rule: "MVFR", color: "bg-blue-500/20 text-blue-400 border-blue-500/50", status: "MARGINAL (ATENÇÃO)" };
-  return { rule: "VFR", color: "bg-emerald-500/20 text-emerald-400 border-emerald-500/50", status: "VISUAL (OPERACIONAL)" };
+  if (visibility < 3000 || windGust > 50) return { rule: "IFR", color: "bg-rose-500/20 text-rose-400 border-rose-500/50", status: "CRÍTICO" };
+  if (visibility < 5000 || windGust > 35) return { rule: "MVFR", color: "bg-blue-500/20 text-blue-400 border-blue-500/50", status: "MARGINAL" };
+  return { rule: "VFR", color: "bg-emerald-500/20 text-emerald-400 border-emerald-500/50", status: "VISUAL" };
 };
 
 const getWindDirection = (degree) => {
-  const directions = ["↑ S", "↗ SW", "→ W", "↘ NW", "↓ N", "↙ NE", "← E", "↖ SE"];
+  const directions = ["↑S", "↗SW", "→W", "↘NW", "↓N", "↙NE", "←E", "↖SE"];
   return directions[Math.round(degree / 45) % 8];
 };
 
@@ -50,104 +50,99 @@ const MapResizer = () => {
 };
 
 // ==========================================
-// COMPONENTE: TERMINAL ESTAÇÃO
+// COMPONENTE: TERMINAL ESTAÇÃO (ALTA DENSIDADE)
 // ==========================================
 const StationTerminal = ({ data }) => {
-  if (!data) return <div className="p-6 bg-slate-900/50 rounded-3xl border border-slate-800 animate-pulse h-[650px]"></div>;
+  if (!data) return <div className="p-4 bg-slate-900/50 rounded-2xl border border-slate-800 animate-pulse h-[350px]"></div>;
 
   const flightData = getFlightCategory(data.current.visibility, data.current.gusts);
 
   return (
-    <div className="bg-[#0b1120]/80 backdrop-blur-2xl rounded-3xl p-5 shadow-2xl border border-slate-700/50 flex flex-col gap-4 relative overflow-hidden">
+    <div className="bg-[#0b1120]/80 backdrop-blur-2xl rounded-2xl p-3.5 shadow-2xl border border-slate-700/50 flex flex-col gap-3 relative overflow-hidden">
       
-      {/* Luzes de Status de Fundo */}
-      <div className={`absolute top-0 right-0 w-48 h-48 blur-[100px] rounded-full opacity-20 pointer-events-none ${flightData.rule === 'IFR' ? 'bg-rose-500' : flightData.rule === 'MVFR' ? 'bg-blue-500' : 'bg-emerald-500'}`}></div>
+      {/* Luzes de Status de Fundo Reduzidas */}
+      <div className={`absolute top-0 right-0 w-32 h-32 blur-[80px] rounded-full opacity-20 pointer-events-none ${flightData.rule === 'IFR' ? 'bg-rose-500' : flightData.rule === 'MVFR' ? 'bg-blue-500' : 'bg-emerald-500'}`}></div>
 
-      {/* 1. CABEÇALHO */}
-      <div className="flex justify-between items-start border-b border-slate-700/50 pb-3 z-10">
-        <div>
-          <h2 className="text-2xl font-black text-slate-100 tracking-tight flex items-center gap-2">
+      {/* 1. CABEÇALHO COMPACTO */}
+      <div className="flex justify-between items-center border-b border-slate-700/50 pb-2 z-10">
+        <div className="flex items-center gap-2">
+          <h2 className="text-lg font-black text-slate-100 tracking-tight whitespace-nowrap">
             {data.city}
           </h2>
-          <div className="flex items-center gap-2 mt-1.5">
-            <span className={`px-2 py-0.5 rounded text-[9px] font-bold border ${flightData.color} tracking-widest`}>
-              {flightData.rule}
-            </span>
-            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{flightData.status}</span>
-          </div>
+          <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold border ${flightData.color} tracking-widest`}>
+            {flightData.rule}
+          </span>
         </div>
         
-        {/* Janela Operacional */}
-        <div className="flex gap-3 bg-slate-900/50 p-2 rounded-xl border border-slate-800">
-          <div className="flex flex-col items-center">
-            <Sunrise size={12} className="text-amber-400 mb-0.5" />
+        {/* Janela Operacional Ultra-Compacta */}
+        <div className="flex gap-2 bg-slate-900/50 px-2 py-1 rounded-lg border border-slate-800">
+          <div className="flex items-center gap-1">
+            <Sunrise size={10} className="text-amber-400" />
             <span className="text-[9px] font-bold text-slate-300">{data.daily.sunrise}</span>
           </div>
-          <div className="w-px h-6 bg-slate-700 mt-1"></div>
-          <div className="flex flex-col items-center">
-            <Sunset size={12} className="text-orange-500 mb-0.5" />
+          <div className="flex items-center gap-1">
+            <Sunset size={10} className="text-orange-500" />
             <span className="text-[9px] font-bold text-slate-300">{data.daily.sunset}</span>
           </div>
         </div>
       </div>
 
-      {/* 2. TELEMETRIA (AVIAÇÃO) */}
-      <div className="flex flex-col xl:flex-row gap-4 z-10 items-center">
-        <div className="flex items-center gap-3 min-w-[150px]">
-          <div className="transform scale-[2] ml-2">
+      {/* 2. TELEMETRIA PRINCIPAL (COMPRIMIDA) */}
+      <div className="flex justify-between items-center z-10 gap-2">
+        {/* Bloco Temp */}
+        <div className="flex items-center gap-2">
+          <div className="transform scale-[1.3] drop-shadow-md">
             {getWeatherIcon(data.current.code, data.current.isDay)}
           </div>
-          <div className="ml-3">
-            <h1 className="text-5xl font-black text-white tracking-tighter drop-shadow-lg">
+          <div>
+            <h1 className="text-3xl font-black text-white tracking-tighter leading-none">
               {data.current.temp}°
             </h1>
-            <div className="flex items-center gap-1 mt-1">
-              <Thermometer size={10} className="text-slate-400" />
-              <span className="text-[10px] text-slate-300 font-medium">Sens: {data.current.feels}°</span>
-            </div>
+            <span className="text-[9px] text-slate-400 font-medium whitespace-nowrap">FL: {data.current.feels}°</span>
           </div>
         </div>
         
-        <div className="grid grid-cols-2 gap-2 w-full">
-          <div className="bg-slate-900/60 p-2.5 rounded-lg border border-slate-700/30 flex justify-between items-center">
-            <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-bold"><Compass size={12}/> VNT</div>
-            <span className="text-xs font-bold text-slate-100">{getWindDirection(data.current.windDir)} {data.current.windSpd}</span>
+        {/* Grid de Dados */}
+        <div className="grid grid-cols-2 gap-1.5 w-full max-w-[180px]">
+          <div className="bg-slate-900/60 px-1.5 py-1 rounded flex justify-between items-center border border-slate-800">
+            <span className="text-[8px] text-slate-400 font-bold"><Compass size={9} className="inline mr-0.5"/>WND</span>
+            <span className="text-[9px] font-bold text-slate-100">{getWindDirection(data.current.windDir)} {data.current.windSpd}</span>
           </div>
-          <div className="bg-slate-900/60 p-2.5 rounded-lg border border-slate-700/30 flex justify-between items-center">
-            <div className="flex items-center gap-1.5 text-[10px] text-rose-400 font-bold"><Wind size={12}/> RAJ</div>
-            <span className="text-xs font-bold text-white">{data.current.gusts} kt</span>
+          <div className="bg-slate-900/60 px-1.5 py-1 rounded flex justify-between items-center border border-slate-800">
+            <span className="text-[8px] text-rose-400 font-bold"><Wind size={9} className="inline mr-0.5"/>GUST</span>
+            <span className="text-[9px] font-bold text-white">{data.current.gusts}</span>
           </div>
-          <div className="bg-slate-900/60 p-2.5 rounded-lg border border-slate-700/30 flex justify-between items-center">
-            <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-bold"><Eye size={12}/> VIS</div>
-            <span className="text-xs font-bold text-slate-100">{data.current.visibility} m</span>
+          <div className="bg-slate-900/60 px-1.5 py-1 rounded flex justify-between items-center border border-slate-800">
+            <span className="text-[8px] text-slate-400 font-bold"><Eye size={9} className="inline mr-0.5"/>VIS</span>
+            <span className="text-[9px] font-bold text-slate-100">{data.current.visibility}m</span>
           </div>
-          <div className="bg-slate-900/60 p-2.5 rounded-lg border border-slate-700/30 flex justify-between items-center">
-            <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-bold"><Gauge size={12}/> QNH</div>
-            <span className="text-xs font-bold text-slate-100">{data.current.pressure}</span>
+          <div className="bg-slate-900/60 px-1.5 py-1 rounded flex justify-between items-center border border-slate-800">
+            <span className="text-[8px] text-slate-400 font-bold"><Gauge size={9} className="inline mr-0.5"/>QNH</span>
+            <span className="text-[9px] font-bold text-slate-100">{data.current.pressure}</span>
           </div>
         </div>
       </div>
 
-      {/* 3. RADAR 6 HORAS */}
+      {/* 3. RADAR 6 HORAS (BARRA ULTRA FINA) */}
       <div className="mt-1 z-10">
-        <h3 className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-          <PlaneTakeoff size={10} className="text-blue-400" /> Janela EVAM (6H)
+        <h3 className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1 flex items-center gap-1">
+          <PlaneTakeoff size={8} className="text-blue-400" /> Janela 6H (Precipitação)
         </h3>
-        <div className="grid grid-cols-6 gap-1.5 bg-slate-900/40 p-3 rounded-xl border border-slate-700/50 shadow-inner">
+        <div className="grid grid-cols-6 gap-1 bg-slate-900/40 p-1.5 rounded-lg border border-slate-800">
           {data.hourly.map((hour, idx) => {
-            const rainHeight = Math.min((hour.precip / 15) * 100, 100);
+            const rainWidth = Math.min((hour.precip / 10) * 100, 100);
             return (
-              <div key={idx} className="flex flex-col items-center justify-between h-28 relative">
-                <span className="text-[10px] text-slate-300 font-bold">{hour.time}</span>
-                <div className="transform scale-90 drop-shadow-md my-auto">{getWeatherIcon(hour.code, 1)}</div>
+              <div key={idx} className="flex flex-col items-center justify-between h-14 relative">
+                <span className="text-[8px] text-slate-400 font-bold leading-none">{hour.time}</span>
+                <div className="transform scale-75 my-auto">{getWeatherIcon(hour.code, 1)}</div>
                 
-                <div className="w-full flex flex-col items-center mt-auto">
-                  <div className="w-full bg-slate-800/80 h-8 relative rounded flex items-end overflow-hidden border border-slate-700/50">
-                    <div style={{ height: `${rainHeight}%` }} className="w-full bg-gradient-to-t from-blue-600 to-cyan-400 transition-all duration-1000"></div>
+                <div className="w-full px-1">
+                  <div className="w-full bg-slate-800 h-1 rounded-full overflow-hidden mb-0.5">
+                    <div style={{ width: `${rainWidth}%` }} className="h-full bg-cyan-400"></div>
                   </div>
-                  <span className="text-[9px] font-bold text-cyan-300 mt-1">
+                  <div className="text-[7px] font-bold text-cyan-300 text-center leading-none">
                     {hour.precip > 0 ? `${hour.precip.toFixed(1)}` : '0'}
-                  </span>
+                  </div>
                 </div>
               </div>
             );
@@ -155,18 +150,18 @@ const StationTerminal = ({ data }) => {
         </div>
       </div>
 
-      {/* 4. DEFESA CIVIL: 5 DIAS */}
-      <div className="mt-1 z-10">
-        <h3 className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-          <ShieldAlert size={10} className="text-amber-400" /> Defesa Civil (Solo)
+      {/* 4. DEFESA CIVIL: 5 DIAS (COMPACTO HORIZONTAL) */}
+      <div className="z-10">
+        <h3 className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1 flex items-center gap-1">
+          <ShieldAlert size={8} className="text-amber-400" /> Acumulado Solo (5 Dias)
         </h3>
-        <div className="grid grid-cols-5 gap-1.5 bg-slate-900/40 p-2.5 rounded-xl border border-slate-700/50 shadow-inner">
+        <div className="grid grid-cols-5 gap-1 bg-slate-900/40 p-1.5 rounded-lg border border-slate-800">
           {data.forecast.map((day, idx) => (
-            <div key={idx} className="flex flex-col items-center gap-1 py-1">
-              <span className={`text-[9px] font-black tracking-wider ${idx === 0 ? 'text-amber-400' : 'text-slate-400'}`}>{day.dayName}</span>
-              <div className="transform scale-75">{getWeatherIcon(day.code, 1)}</div>
-              <span className="text-[10px] font-bold text-slate-300">{day.min}°/{day.max}°</span>
-              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${day.rain > 15 ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' : 'bg-slate-800 text-slate-400 border-slate-700'}`}>
+            <div key={idx} className="flex flex-col items-center gap-0.5">
+              <span className={`text-[8px] font-black tracking-wider ${idx === 0 ? 'text-amber-400' : 'text-slate-500'}`}>{day.dayName}</span>
+              <div className="transform scale-50 -my-1">{getWeatherIcon(day.code, 1)}</div>
+              <span className="text-[8px] font-bold text-slate-300 leading-none">{day.min}°/{day.max}°</span>
+              <span className={`text-[7px] font-bold px-1 py-0.5 rounded ${day.rain > 15 ? 'bg-indigo-500/20 text-indigo-300' : 'text-slate-400'}`}>
                 {day.rain > 0 ? `${day.rain.toFixed(1)}mm` : '0mm'}
               </span>
             </div>
@@ -253,43 +248,37 @@ export default function App() {
     };
 
     const loadAll = async () => {
-      // 1. Busca Clima para TODAS as 6 Bases
       const promises = BASES.map(base => fetchWeatherForBase(base));
       const results = await Promise.all(promises);
       setStationsData(results);
 
-      // 2. Inteligência Tática sobre toda a FIR
       const maxGust = Math.max(...results.map(r => r.current.gusts));
       const minVis = Math.min(...results.map(r => r.current.visibility));
       const maxRain = Math.max(...results.map(r => r.forecast[0].rain)); 
 
       if (minVis <= 3000 || maxGust >= 60) {
-        setFlightStatus({ level: 'RED', text: 'IFR GERAL: Condições Críticas na FIR Sul.' });
+        setFlightStatus({ level: 'RED', text: 'IFR: CONDIÇÕES CRÍTICAS NA FIR' });
       } else if (minVis <= 5000 || maxGust >= 40) {
-        setFlightStatus({ level: 'YELLOW', text: 'MVFR: Teto Marginal. Atenção ao EVAM.' });
+        setFlightStatus({ level: 'YELLOW', text: 'MVFR: TETO MARGINAL P/ EVAM' });
       } else {
-        setFlightStatus({ level: 'GREEN', text: 'VFR: Corredores Visuais Liberados.' });
+        setFlightStatus({ level: 'GREEN', text: 'VFR: CORREDORES VISUAIS ABERTOS' });
       }
 
       if (maxRain > 50) {
-        setCivilStatus({ level: 'RED', text: 'ALERTA DC: Risco Hidrológico Extremo.' });
+        setCivilStatus({ level: 'RED', text: 'ALERTA: RISCO HIDROLÓGICO EXTREMO' });
       } else if (maxRain > 20) {
-        setCivilStatus({ level: 'YELLOW', text: 'ATENÇÃO DC: Saturação de solo detectada.' });
+        setCivilStatus({ level: 'YELLOW', text: 'ATENÇÃO: SOLO SATURADO' });
       } else {
-        setCivilStatus({ level: 'GREEN', text: 'SOLO OK: Condição Terrestre Normal.' });
+        setCivilStatus({ level: 'GREEN', text: 'SOLO OK: CONDIÇÃO NORMAL' });
       }
 
-      // 3. Busca Dados do Radar (INCLUINDO NOWCAST / PREVISÃO)
       try {
         const res = await fetch("https://api.rainviewer.com/public/weather-maps.json");
         const data = await res.json();
-        
         setRadarHost(data.host);
         
-        // Pega as últimas 5 fotos do passado + as próximas 3 de projeção (Nowcast)
         const pastFrames = data.radar.past.slice(-5).map(f => ({ ...f, type: 'PAST' }));
         const nowcastFrames = data.radar.nowcast.slice(0, 3).map(f => ({ ...f, type: 'NOWCAST' }));
-        
         setRadarFrames([...pastFrames, ...nowcastFrames]);
       } catch (error) {
         console.error("Erro no Radar", error);
@@ -301,14 +290,11 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // LOOP DE ANIMAÇÃO DO RADAR (Roda a cada 1.5 segundos)
   useEffect(() => {
     if (radarFrames.length === 0) return;
-    
     const loop = setInterval(() => {
       setActiveFrameIndex((prev) => (prev + 1) % radarFrames.length);
     }, 1500);
-    
     return () => clearInterval(loop);
   }, [radarFrames]);
 
@@ -318,7 +304,6 @@ export default function App() {
     GREEN: "bg-emerald-500/10 border-emerald-500/40 text-emerald-400"
   };
 
-  // Formata o relógio do radar com base no frame ativo
   const activeFrameData = radarFrames[activeFrameIndex];
   let radarTimeLabel = "--:--";
   let isProjection = false;
@@ -330,72 +315,68 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#020617] p-4 md:p-6 text-slate-200 font-sans flex flex-col gap-6"
+    <div className="min-h-screen bg-[#020617] p-3 md:p-4 text-slate-200 font-sans flex flex-col gap-4"
          style={{ background: 'radial-gradient(circle at top center, #0f172a, #020617)' }}>
       
       <style>{`
-        .leaflet-container { background-color: #020617 !important; border-radius: 1.5rem; cursor: crosshair !important; }
+        .leaflet-container { background-color: #020617 !important; border-radius: 1rem; cursor: crosshair !important; }
         .leaflet-container img { max-width: none !important; max-height: none !important; margin: 0 !important; padding: 0 !important; }
         .dark-base-map { filter: invert(100%) hue-rotate(180deg) brightness(85%) contrast(110%) grayscale(40%); }
-        .leaflet-tooltip { background: rgba(15, 23, 42, 0.95) !important; border: 1px solid rgba(255,255,255,0.1) !important; color: white !important; font-weight: bold; border-radius: 6px !important; backdrop-filter: blur(8px); padding: 4px 8px; font-size: 10px; }
+        .leaflet-tooltip { background: rgba(15, 23, 42, 0.95) !important; border: 1px solid rgba(255,255,255,0.1) !important; color: white !important; font-weight: bold; border-radius: 4px !important; backdrop-filter: blur(8px); padding: 2px 6px; font-size: 9px; }
         .leaflet-tooltip-right::before { border-right-color: rgba(15, 23, 42, 0.95) !important; }
         .leaflet-tooltip-left::before { border-left-color: rgba(15, 23, 42, 0.95) !important; }
+        .leaflet-tooltip-top::before { border-top-color: rgba(15, 23, 42, 0.95) !important; }
       `}</style>
 
-      {/* CABEÇALHO C2 */}
-      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 max-w-full mx-auto w-full border-b border-slate-800 pb-5">
+      {/* CABEÇALHO COMPACTO (15 polegadas) */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 w-full border-b border-slate-800 pb-3">
         <div>
-          <h1 className="text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-emerald-400 tracking-tight">
+          <h1 className="text-2xl md:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-emerald-400 tracking-tight leading-none">
             C.O.C. ESTADUAL (RS)
           </h1>
-          <p className="text-xs text-slate-400 mt-1.5 font-bold tracking-widest flex items-center gap-2">
-            <Activity size={12} className="text-blue-500"/> COMANDO: SDSOP / HACO CANOAS
+          <p className="text-[10px] text-slate-400 mt-1 font-bold tracking-widest flex items-center gap-1">
+            <Activity size={10} className="text-blue-500"/> SDSOP / HACO
           </p>
         </div>
         
-        {/* MATRIZ DE AMEAÇA DUPLA (DECEA + DC) */}
-        <div className="flex flex-col sm:flex-row gap-3 w-full xl:w-auto">
-          <div className={`flex items-center gap-3 px-4 py-2 rounded-xl border backdrop-blur-md shadow-lg ${statusColors[flightStatus.level]}`}>
-            <PlaneTakeoff size={16} />
-            <span className="text-[10px] font-bold uppercase tracking-widest">{flightStatus.text}</span>
+        <div className="flex flex-row gap-2 w-full md:w-auto">
+          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border backdrop-blur-md shadow-lg ${statusColors[flightStatus.level]} flex-1 md:flex-none justify-center`}>
+            <PlaneTakeoff size={14} />
+            <span className="text-[9px] font-bold uppercase tracking-wider whitespace-nowrap">{flightStatus.text}</span>
           </div>
-          <div className={`flex items-center gap-3 px-4 py-2 rounded-xl border backdrop-blur-md shadow-lg ${statusColors[civilStatus.level]}`}>
-            <ShieldAlert size={16} />
-            <span className="text-[10px] font-bold uppercase tracking-widest">{civilStatus.text}</span>
+          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border backdrop-blur-md shadow-lg ${statusColors[civilStatus.level]} flex-1 md:flex-none justify-center`}>
+            <ShieldAlert size={14} />
+            <span className="text-[9px] font-bold uppercase tracking-wider whitespace-nowrap">{civilStatus.text}</span>
           </div>
         </div>
       </div>
       
-      {/* 
-        GRID DE TERMINAIS (REDE DE BASES) 
-        Ajustado para caber 2 por linha em telas normais, e 3 em telas Ultra-Wide
-      */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6 max-w-full mx-auto w-full">
+      {/* GRID DE TERMINAIS ADAPTADO PARA LAPTOP (3 COLUNAS) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 w-full">
         {stationsData.map((data, idx) => (
           <StationTerminal key={idx} data={data} />
         ))}
       </div>
 
-      {/* TELA DO RADAR TÁTICO (ANIMADO E HÍBRIDO) */}
-      <div className="w-full max-w-full mx-auto relative rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-slate-800 p-2 bg-slate-900/50 backdrop-blur-sm mt-2">
+      {/* TELA DO RADAR TÁTICO OTIMIZADA */}
+      <div className="w-full relative rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] border border-slate-800 p-1.5 bg-slate-900/50 backdrop-blur-sm mt-1">
         
         {/* HUD DO RADAR */}
-        <div className="absolute top-6 left-6 z-[400] bg-[#020617]/90 p-4 rounded-2xl border border-slate-700/50 shadow-2xl pointer-events-none backdrop-blur-md">
-          <div className="flex items-center gap-3 mb-3">
-            <span className="bg-rose-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-[0_0_10px_rgba(244,63,94,0.5)] animate-pulse">AUTO</span>
-            <span className="text-slate-200 text-[10px] font-bold tracking-widest uppercase">Radar de Varredura</span>
+        <div className="absolute top-4 left-4 z-[400] bg-[#020617]/90 p-2.5 rounded-xl border border-slate-700/50 shadow-2xl pointer-events-none backdrop-blur-md">
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="bg-rose-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded animate-pulse">AUTO</span>
+            <span className="text-slate-200 text-[9px] font-bold tracking-widest uppercase">Nexrad</span>
           </div>
-          
-          {/* DISPLAY DE TEMPO E PREVISÃO */}
-          <div className={`text-xl font-black tracking-widest border-t border-slate-800 pt-2 ${isProjection ? 'text-amber-400' : 'text-cyan-400'}`}>
+          <div className={`text-lg font-black tracking-widest border-t border-slate-800 pt-1 leading-none ${isProjection ? 'text-amber-400' : 'text-cyan-400'}`}>
             {radarTimeLabel}
           </div>
-          <div className={`text-[9px] font-bold mt-1 ${isProjection ? 'text-amber-500/70' : 'text-cyan-500/70'}`}>
-            {isProjection ? "PROJEÇÃO DE ROTA (NOWCAST)" : "LEITURA DE SATÉLITE (REAL)"}
+          <div className={`text-[8px] font-bold mt-1 ${isProjection ? 'text-amber-500/70' : 'text-cyan-500/70'}`}>
+            {isProjection ? "PROJEÇÃO (NOWCAST)" : "LEITURA REAL"}
           </div>
         </div>
 
-        <div className="h-[700px] w-full rounded-3xl overflow-hidden bg-[#020617]">
+        {/* Altura reduzida para caber no notebook (550px) */}
+        <div className="h-[550px] w-full rounded-xl overflow-hidden bg-[#020617]">
           <MapContainer 
             center={[-30.1, -52.5]} 
             zoom={7} 
@@ -407,7 +388,6 @@ export default function App() {
           >
             <MapResizer />
 
-            {/* MAPA BASE BLINDADO */}
             <TileLayer
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               attribution='&copy; OpenStreetMap'
@@ -415,11 +395,6 @@ export default function App() {
               maxZoom={19}
             />
             
-            {/* 
-              O MOTOR DE ANIMAÇÃO:
-              Renderizamos TODOS os frames de chuva de uma vez, mas deixamos apenas o 
-              frame "Ativo" com opacidade visível. Isso mata o lag de carregamento.
-            */}
             {radarHost && radarFrames.map((frame, idx) => (
               <TileLayer
                 key={`${frame.path}-${idx}`}
@@ -431,12 +406,11 @@ export default function App() {
               />
             ))}
 
-            {/* PINOS DE TODAS AS 6 BASES DO RS */}
-            {BASES.map((base, idx) => (
+            {BASES.map((base) => (
               <React.Fragment key={base.id}>
                 <Circle center={[base.lat, base.lon]} radius={15000} color={base.id === 'SBCO' ? '#38bdf8' : '#64748b'} weight={1} fill={false} opacity={0.3} dashArray="2, 6" />
                 <CircleMarker center={[base.lat, base.lon]} radius={4} color="#000" weight={2} fillColor={base.id === 'SBCO' ? '#38bdf8' : '#94a3b8'} fillOpacity={1} zIndexOffset={100}>
-                  <Tooltip direction="top" offset={[0, -10]} opacity={1} permanent>{base.id}</Tooltip>
+                  <Tooltip direction="top" offset={[0, -8]} opacity={1} permanent>{base.id}</Tooltip>
                 </CircleMarker>
               </React.Fragment>
             ))}
