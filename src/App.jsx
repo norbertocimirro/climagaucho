@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Cloud, CloudDrizzle, CloudLightning, CloudRain, CloudSun, Moon, Sun, Wind, Droplets } from 'lucide-react';
 import { MapContainer, TileLayer, CircleMarker, Tooltip, Circle, Polyline } from 'react-leaflet';
-// A LINHA ABAIXO MATA O BUG DO MAPA CINZA PELA METADE:
 import 'leaflet/dist/leaflet.css';
 
 // ==========================================
@@ -186,12 +185,24 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // Coordenadas das bases para ancorar o HUD
   const hacoCoords = [-29.92, -51.18];
   const bageCoords = [-31.33, -54.11];
 
   return (
     <div className="min-h-screen p-4 md:p-8 max-w-6xl mx-auto flex flex-col gap-8">
+      
+      {/* 
+        O "ESCUDO" DO MAPA:
+        Esta tag style injeta o CSS direto na página. Ela impede que o Tailwind 
+        esprema e quebre as imagens 256x256 do mapa quando você dá zoom. 
+      */}
+      <style>{`
+        .leaflet-container img {
+          max-width: none !important;
+          max-height: none !important;
+        }
+      `}</style>
+
       <div className="flex items-center gap-3 mb-2">
         <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
         <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">Painel Operacional HACO</h1>
@@ -204,7 +215,6 @@ export default function App() {
 
       <div className="bg-white/10 backdrop-blur-md rounded-2xl p-1 shadow-2xl border border-white/10 overflow-hidden relative mt-4">
         
-        {/* CAIXA DE TELEMETRIA TÁTICA (HUD) */}
         <div className="absolute top-4 left-4 z-[400] bg-black/80 p-3 rounded-lg border border-white/10 shadow-lg pointer-events-none">
           <div className="flex items-center gap-2 mb-1">
             <span className="bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded">LIVE</span>
@@ -217,21 +227,25 @@ export default function App() {
           </div>
         </div>
 
-        {/* MAPA INTERATIVO (Agora com Fundo Preto para não dar flash branco) */}
+        {/* 
+          LIMITES DE ZOOM IMPLEMENTADOS: 
+          - maxZoom={10}: Impede de dar zoom onde a nuvem não existe mais, evitando o "buraco".
+          - minZoom={5}: Impede de tirar tanto zoom a ponto de ver o planeta inteiro repetido.
+        */}
         <div className="h-[500px] w-full rounded-xl overflow-hidden bg-[#0a0a0a]">
           <MapContainer 
             center={[-30.627, -52.646]} 
             zoom={6} 
+            maxZoom={10} 
+            minZoom={5}
             style={{ height: '100%', width: '100%', background: '#0a0a0a' }}
-            zoomControl={false}
+            zoomControl={true}
           >
-            {/* Mapa Base Escuro (CartoDB) */}
             <TileLayer
               url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
               attribution='&copy; CartoDB'
             />
             
-            {/* Camada do Radar (RainViewer) */}
             {radar.path && (
               <TileLayer
                 url={`${radar.host}${radar.path}/256/{z}/{x}/{y}/6/1_1.png`}
@@ -239,20 +253,13 @@ export default function App() {
               />
             )}
 
-            {/* =====================================
-                HUD TÁTICO (Desenhado no Mapa)
-                ===================================== */}
-            
-            {/* 1. Crosshair (Eixos N-S e L-O cruzando o HACO) */}
             <Polyline positions={[[-25.0, -51.18], [-35.0, -51.18]]} color="#30D158" weight={1} opacity={0.4} />
             <Polyline positions={[[-29.92, -58.0], [-29.92, -45.0]]} color="#30D158" weight={1} opacity={0.4} />
 
-            {/* 2. Anéis de Alcance (100km, 200km, 300km) */}
             <Circle center={hacoCoords} radius={100000} color="#30D158" weight={1} fill={false} dashArray="4, 4" opacity={0.6} />
             <Circle center={hacoCoords} radius={200000} color="#30D158" weight={1} fill={false} dashArray="4, 4" opacity={0.6} />
             <Circle center={hacoCoords} radius={300000} color="#30D158" weight={1} fill={false} dashArray="4, 4" opacity={0.6} />
 
-            {/* 3. Pinos Base */}
             <CircleMarker center={hacoCoords} radius={6} color="#000" weight={2} fillColor="#30D158" fillOpacity={1}>
               <Tooltip direction="right" offset={[10, 0]} opacity={1} permanent className="font-bold bg-black/60 text-white border-0 shadow-none text-xs rounded">
                 CANOAS (HACO)
