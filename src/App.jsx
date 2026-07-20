@@ -17,12 +17,13 @@ const BASES = [
   { id: 'SBBG', name: 'BAGÉ', lat: -31.33, lon: -54.11 }
 ];
 
+// URLs Táticas Independentes integradas
 const INITIAL_RIVERS = [
-  { id: 'taquari', name: 'Rio Taquari (Estrela)', cod: '86695000', level: null, alert: 15.00, flood: 19.00, lat: -29.50, lon: -51.96 },
-  { id: 'guaiba', name: 'Guaíba (Cais Mauá)', cod: '87450004', level: null, alert: 2.50, flood: 3.00, lat: -30.03, lon: -51.23 },
-  { id: 'cai', name: 'Rio Caí (S. S. do Caí)', cod: '87382000', level: null, alert: 7.00, flood: 10.00, lat: -29.58, lon: -51.37 },
-  { id: 'sinos', name: 'Rio dos Sinos (S. Leopoldo)', cod: '87398000', level: null, alert: 4.30, flood: 4.50, lat: -29.76, lon: -51.14 },
-  { id: 'uruguai', name: 'Rio Uruguai (Uruguaiana)', cod: '77150000', level: null, alert: 7.50, flood: 8.50, lat: -29.76, lon: -57.08 }
+  { id: 'taquari', name: 'Rio Taquari (Estrela)', cod: '86695000', siteUrl: 'https://defesacivil.eldorado.rs.gov.br/monitoramento.php', level: null, alert: 15.00, flood: 19.00, lat: -29.50, lon: -51.96 },
+  { id: 'guaiba', name: 'Guaíba (Cais Mauá)', cod: '87450004', siteUrl: 'https://nivelguaiba.com.br/', level: null, alert: 2.50, flood: 3.00, lat: -30.03, lon: -51.23 },
+  { id: 'cai', name: 'Rio Caí (S. S. do Caí)', cod: '87382000', siteUrl: 'https://nivelguaiba.com.br/sao-sebastiao-do-cai', level: null, alert: 7.00, flood: 10.00, lat: -29.58, lon: -51.37 },
+  { id: 'sinos', name: 'Rio dos Sinos (S. Leopoldo)', cod: '87398000', siteUrl: 'https://nivelguaiba.com.br/sao-leopoldo', level: null, alert: 4.30, flood: 4.50, lat: -29.76, lon: -51.14 },
+  { id: 'uruguai', name: 'Rio Uruguai (Uruguaiana)', cod: '77150000', siteUrl: 'https://niveluruguai.com.br/', level: null, alert: 7.50, flood: 8.50, lat: -29.76, lon: -57.08 }
 ];
 
 // ==========================================
@@ -84,7 +85,7 @@ const HydrologyTerminal = ({ rivers }) => {
       <div className="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
         <div>
           <div className="flex items-center gap-1 text-[10px] text-blue-400 font-bold tracking-widest mb-1">
-            <Waves size={10} /> TELEMETRIA: ANA / CPRM
+            <Waves size={10} /> TELEMETRIA: ANA / SITES INDEPENDENTES
           </div>
           <h2 className="text-xl lg:text-2xl font-black text-white">BACIAS HIDROGRÁFICAS</h2>
         </div>
@@ -105,8 +106,8 @@ const HydrologyTerminal = ({ rivers }) => {
               <div className="flex justify-between items-start mb-2">
                 <div>
                   <span className="font-bold text-slate-200 block">{river.name}</span>
-                  <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded mt-1 inline-block ${typeof river.level === 'number' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'}`}>
-                    {typeof river.level === 'number' ? 'SATÉLITE (DADO REAL)' : 'SINAL PERDIDO'}
+                  <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded mt-1 inline-block ${typeof river.level === 'number' ? (river.isBackup ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30') : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'}`}>
+                    {typeof river.level === 'number' ? (river.isBackup ? 'MONITORAMENTO ALTERNATIVO (WEB)' : 'SATÉLITE ANA (OFICIAL)') : 'SINAL PERDIDO'}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -444,69 +445,73 @@ export default function App() {
       } catch (error) { console.error("Erro ao buscar radar", error); }
     };
 
-    // FETCH: TRIPLA REDUNDÂNCIA (FORÇA BRUTA EM MÚLTIPLOS PROXIES ANA/CPRM)
+    // FETCH: SISTEMA HÍBRIDO BLINDADO (ANA + SCRAPER DE TEXTO PURO)
     const fetchRivers = async () => {
       const updatedRivers = await Promise.all(INITIAL_RIVERS.map(async (rio) => {
         let nivelAtual = null;
+        let isBackup = false; // False = ANA, True = Web Scraper
 
-        const timestamp = new Date().getTime();
-        const urlANA = `http://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosTempoReal?codEstacao=${rio.cod}&_=${timestamp}`;
-        
-        // Túneis de Invasão: Codetabs, CorsProxy e AllOrigins Raw
-        const proxies = [
-          `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(urlANA)}`,
-          `https://corsproxy.io/?${encodeURIComponent(urlANA)}`,
-          `https://api.allorigins.win/raw?url=${encodeURIComponent(urlANA)}`
-        ];
-
-        // TÁTICA 1: Força Bruta contra a ANA
-        for (const proxy of proxies) {
-          try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s de limite por porta
-            const res = await fetch(proxy, { signal: controller.signal, cache: "no-store" });
-            clearTimeout(timeoutId);
-
-            if (res.ok) {
-              const xmlText = await res.text();
-              if (xmlText.includes('<Nivel>')) {
-                const parser = new DOMParser();
-                const xml = parser.parseFromString(xmlText, "text/xml");
-                const niveis = xml.getElementsByTagName("Nivel");
-                
-                for (let i = 0; i < niveis.length; i++) {
-                  const val = niveis[i].textContent;
-                  if (val && !isNaN(val) && val.trim() !== "") {
-                    nivelAtual = (parseFloat(val) / 100).toFixed(2);
-                    break;
-                  }
+        // TÁTICA 1: Tenta o servidor oficial da ANA
+        try {
+          const timestamp = new Date().getTime();
+          const urlANA = `http://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosTempoReal?codEstacao=${rio.cod}&_=${timestamp}`;
+          const resANA = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(urlANA)}`, { cache: "no-store" });
+          
+          if (resANA.ok) {
+            const xmlText = await resANA.text();
+            if (xmlText.includes('<Nivel>')) {
+              const parser = new DOMParser();
+              const xml = parser.parseFromString(xmlText, "text/xml");
+              const niveis = xml.getElementsByTagName("Nivel");
+              for (let i = 0; i < niveis.length; i++) {
+                const val = niveis[i].textContent;
+                if (val && !isNaN(val) && val.trim() !== "") {
+                  nivelAtual = (parseFloat(val) / 100).toFixed(2);
+                  break;
                 }
-                
-                if (nivelAtual) break; // Sucesso! Para de tentar outros túneis.
               }
             }
-          } catch (e) {
-            // Ignora falha e ataca o próximo proxy em silêncio
           }
+        } catch (e) { /* Falhou em silêncio, vai para Tática 2 */ }
+
+        // TÁTICA 2: Varredura Web de Alta Precisão (Scraper de Texto Puro)
+        if (!nivelAtual && rio.siteUrl) {
+          try {
+            const resWeb = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(rio.siteUrl)}`, { cache: "no-store" });
+            if (resWeb.ok) {
+              const jsonWeb = await resWeb.json();
+              
+              // Converte o HTML em um documento em memória e extrai APENAS o texto (ignora toda a estrutura do site que costuma quebrar)
+              const doc = new DOMParser().parseFromString(jsonWeb.contents, "text/html");
+              const textoLimpo = doc.body.innerText.replace(/\s+/g, ' ');
+              
+              // Regex Inteligente: Busca padrões comuns na Defesa Civil
+              // 1. Procura "2,15 m" ou "2.15m"
+              let match = textoLimpo.match(/([0-9]{1,2}[,.][0-9]{2})\s*m/i);
+              // 2. Se falhar, procura a palavra "atual" perto de um número
+              if (!match) match = textoLimpo.match(/atual[^\d]*([0-9]{1,2}[,.][0-9]{2})/i);
+              // 3. Último recurso: pega o primeiro número com duas casas decimais no texto
+              if (!match) match = textoLimpo.match(/([0-9]{1,2}[,.][0-9]{2})/);
+
+              if (match && match[1]) {
+                const numeroExtraido = parseFloat(match[1].replace(',', '.'));
+                
+                // Trava de segurança: Rios costumam ficar entre 0 e 35 metros (evita que o painel pegue a temperatura ou a data por acidente)
+                if (numeroExtraido > 0 && numeroExtraido < 35) {
+                  nivelAtual = numeroExtraido.toFixed(2);
+                  isBackup = true; // Confirma que o dado veio do site alternativo
+                }
+              }
+            }
+          } catch (e) { console.error(`Varredura web falhou para ${rio.name}`); }
         }
 
-        // TÁTICA 2: Se a ANA bloquear, tenta buscar via API do SACE (CPRM) diretamente
-        if (!nivelAtual) {
-           try {
-             const saceUrl = `https://sace.cprm.gov.br/api/dadosestacao/${rio.cod}`;
-             const resSace = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(saceUrl)}`);
-             if (resSace.ok) {
-               const saceData = await resSace.json();
-               if(saceData && saceData.length > 0) {
-                 const ultDado = saceData[saceData.length - 1]; 
-                 if (ultDado.nivel) nivelAtual = (ultDado.nivel / 100).toFixed(2);
-               }
-             }
-           } catch(e) { }
+        // RESULTADO SEGURO
+        if (nivelAtual !== null && !isNaN(nivelAtual)) {
+          return { ...rio, level: parseFloat(nivelAtual), isBackup: isBackup };
+        } else {
+          return { ...rio, level: null, isBackup: false }; // Envia Null para acionar a tela "SEM SINAL"
         }
-
-        // RETORNO FINAL: Passa o dado se existir. Se falhar, passa NULL (a UI mostra Sinal Perdido)
-        return { ...rio, level: nivelAtual ? parseFloat(nivelAtual) : null };
       }));
       
       setRiverData(updatedRivers);
