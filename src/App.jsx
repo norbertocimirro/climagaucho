@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { Cloud, CloudDrizzle, CloudLightning, CloudRain, CloudSun, Moon, Sun, Wind, Droplets, Eye, Gauge, AlertTriangle, CheckCircle2, Thermometer, Compass, Sunrise, Sunset, ShieldAlert, Activity, Crosshair, CloudCog, Siren, Map as MapIcon, Waves, ActivitySquare } from 'lucide-react';
+import { Cloud, CloudDrizzle, CloudLightning, CloudRain, CloudSun, Moon, Sun, Wind, Droplets, Eye, Gauge, AlertTriangle, CheckCircle2, Thermometer, Compass, Sunrise, Sunset, ShieldAlert, Activity, Crosshair, CloudCog, Siren, Map as MapIcon, Waves, ActivitySquare, ServerCrash } from 'lucide-react';
 import { MapContainer, TileLayer, CircleMarker, Tooltip, Circle, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 
 // ==========================================
-// 1. CONFIGURAÇÕES GLOBAIS - BASES E RIOS (ANA)
+// 1. CONFIGURAÇÕES GLOBAIS - C2 RS
 // ==========================================
 const BASES = [
-  { id: 'RS-GENERAL', name: 'SITUAÇÃO GERAL DO ESTADO', lat: -30.0, lon: -53.2 },
+  { id: 'RS-GENERAL', name: 'PANORAMA ESTADUAL RS', lat: -30.0, lon: -53.2 },
   { id: 'HYDRO', name: 'BACIAS HIDROGRÁFICAS', lat: -29.8, lon: -51.5 },
   { id: 'SBCO', name: 'CANOAS (HACO)', lat: -29.94, lon: -51.15 },
   { id: 'SBPA', name: 'PORTO ALEGRE', lat: -29.99, lon: -51.17 },
@@ -17,13 +17,12 @@ const BASES = [
   { id: 'SBBG', name: 'BAGÉ', lat: -31.33, lon: -54.11 }
 ];
 
-// Códigos oficiais das estações ANA (TelemetriaWS)
 const INITIAL_RIVERS = [
-  { id: 'taquari', name: 'Rio Taquari (Estrela)', cod: '86695000', level: null, alert: 15.00, flood: 19.00, lat: -29.50, lon: -51.96 },
-  { id: 'guaiba', name: 'Guaíba (Cais Mauá)', cod: '87450004', level: null, alert: 2.50, flood: 3.00, lat: -30.03, lon: -51.23 },
-  { id: 'cai', name: 'Rio Caí (S. S. do Caí)', cod: '87382000', level: null, alert: 7.00, flood: 10.00, lat: -29.58, lon: -51.37 },
-  { id: 'sinos', name: 'Rio dos Sinos (S. Leopoldo)', cod: '87398000', level: null, alert: 4.30, flood: 4.50, lat: -29.76, lon: -51.14 },
-  { id: 'uruguai', name: 'Rio Uruguai (Uruguaiana)', cod: '77150000', level: null, alert: 7.50, flood: 8.50, lat: -29.76, lon: -57.08 }
+  { id: 'taquari', name: 'Rio Taquari (Estrela)', cod: '86695000', level: null, alert: 15.00, flood: 19.00, lat: -29.50, lon: -51.96, backupLevel: 14.80 },
+  { id: 'guaiba', name: 'Guaíba (Cais Mauá)', cod: '87450004', level: null, alert: 2.50, flood: 3.00, lat: -30.03, lon: -51.23, backupLevel: 2.10 },
+  { id: 'cai', name: 'Rio Caí (S. S. do Caí)', cod: '87382000', level: null, alert: 7.00, flood: 10.00, lat: -29.58, lon: -51.37, backupLevel: 6.50 },
+  { id: 'sinos', name: 'Rio dos Sinos (S. Leopoldo)', cod: '87398000', level: null, alert: 4.30, flood: 4.50, lat: -29.76, lon: -51.14, backupLevel: 3.90 },
+  { id: 'uruguai', name: 'Rio Uruguai (Uruguaiana)', cod: '77150000', level: null, alert: 7.50, flood: 8.50, lat: -29.76, lon: -57.08, backupLevel: 6.80 }
 ];
 
 // ==========================================
@@ -70,11 +69,10 @@ const MapAutoTracker = ({ center, zoom }) => {
 };
 
 // ==========================================
-// 4. COMPONENTE: BACIAS HIDROGRÁFICAS (SGB/ANA AO VIVO)
+// 4. COMPONENTE: BACIAS HIDROGRÁFICAS (SGB/ANA)
 // ==========================================
 const HydrologyTerminal = ({ rivers }) => {
   const getRiverStatus = (river) => {
-    if (river.level === null) return { color: "bg-slate-600", text: "OFFLINE", bg: "bg-slate-900/50 border-slate-700/50" };
     if (river.level >= river.flood) return { color: "bg-rose-500", text: "INUNDAÇÃO", bg: "bg-rose-900/20 border-rose-500/50 shadow-[0_0_15px_rgba(244,63,94,0.1)]" };
     if (river.level >= river.alert) return { color: "bg-amber-500", text: "ALERTA", bg: "bg-amber-900/20 border-amber-500/50" };
     return { color: "bg-blue-500", text: "NORMAL", bg: "bg-slate-900/80 border-slate-700/50" };
@@ -84,7 +82,7 @@ const HydrologyTerminal = ({ rivers }) => {
     <div className="bg-[#0b1120]/90 backdrop-blur-xl rounded-2xl p-4 lg:p-6 border border-slate-700 shadow-2xl h-full overflow-y-auto custom-scrollbar">
       <div className="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
         <div>
-          <div className="flex items-center gap-1 text-[10px] text-blue-400 font-bold tracking-widest mb-1">
+          <div className="flex items-center gap-1 text-[9px] text-blue-400 font-bold tracking-widest mb-1">
             <Waves size={10} /> TELEMETRIA: ANA / SGB
           </div>
           <h2 className="text-xl lg:text-2xl font-black text-white">BACIAS HIDROGRÁFICAS</h2>
@@ -101,21 +99,21 @@ const HydrologyTerminal = ({ rivers }) => {
 
           return (
             <div key={river.id} className={`p-4 rounded-xl border ${status.bg} transition-all relative overflow-hidden`}>
-              <div className="flex justify-between items-center mb-2">
-                <span className="font-bold text-slate-200">{river.name}</span>
+              <div className="flex justify-between items-start mb-2">
+                <div>
+                  <span className="font-bold text-slate-200 block">{river.name}</span>
+                  <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded mt-1 inline-block ${river.isBackup ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'}`}>
+                    {river.isBackup ? 'CONTINGÊNCIA (OFFLINE)' : 'SATÉLITE (REAL)'}
+                  </span>
+                </div>
                 <div className="flex items-center gap-2">
-                  {river.level !== null ? (
-                    <span className={`text-xl font-black ${status.text === 'INUNDAÇÃO' ? 'text-rose-400' : status.text === 'ALERTA' ? 'text-amber-400' : 'text-white'}`}>
-                      {river.level.toFixed(2)}m
-                    </span>
-                  ) : (
-                    <span className="text-xs font-bold text-slate-500 flex items-center gap-1"><ActivitySquare size={12}/> SEM SINAL</span>
-                  )}
+                  <span className={`text-2xl font-black ${status.text === 'INUNDAÇÃO' ? 'text-rose-400' : status.text === 'ALERTA' ? 'text-amber-400' : 'text-white'}`}>
+                    {river.level.toFixed(2)}m
+                  </span>
                 </div>
               </div>
 
-              {/* Régua Hidrológica */}
-              <div className="relative w-full h-3 bg-slate-800 rounded-full mt-5 mb-2">
+              <div className="relative w-full h-3 bg-slate-800 rounded-full mt-4 mb-2">
                 <div className="absolute top-[-14px] w-0.5 h-6 bg-amber-500 z-10" style={{ left: `${alertPct}%` }}>
                   <span className="absolute -top-3 -left-3 text-[8px] text-amber-500 font-bold">ALERTA</span>
                 </div>
@@ -147,9 +145,7 @@ const GeneralOverview = ({ stations, rivers }) => {
   const enchenteRisks = stations.filter(s => s.forecast[0].rain > 30);
   const vendavalRisks = stations.filter(s => s.current.gusts > 45);
   const nevoeiroRisks = stations.filter(s => s.current.visibility < 3000);
-  
-  // Rios em Alerta ou Inundação (Apenas os que tem sinal válido)
-  const riosEmRisco = rivers.filter(r => r.level !== null && r.level >= r.alert);
+  const riosEmRisco = rivers.filter(r => r.level >= r.alert);
 
   const hasAlerts = enchenteRisks.length > 0 || vendavalRisks.length > 0 || nevoeiroRisks.length > 0 || riosEmRisco.length > 0;
 
@@ -168,10 +164,10 @@ const GeneralOverview = ({ stations, rivers }) => {
         </div>
       ) : (
         <div className="space-y-4">
-          {/* ALERTAS DOS RIOS (NOVO) */}
+          
           {riosEmRisco.length > 0 && (
             <div className="bg-rose-900/20 border border-rose-500/50 p-4 rounded-xl shadow-[0_0_15px_rgba(244,63,94,0.1)]">
-              <h3 className="text-rose-500 font-black flex items-center gap-2 mb-3 text-sm tracking-widest"><Waves size={16}/> NÍVEL DOS RIOS: EMERGÊNCIA</h3>
+              <h3 className="text-rose-500 font-black flex items-center gap-2 mb-3 text-sm tracking-widest"><Waves size={16}/> RISCO DE ENCHENTE / INUNDAÇÃO</h3>
               <div className="grid gap-2">
                 {riosEmRisco.map(r => (
                   <div key={r.id} className="flex justify-between items-center text-xs bg-slate-900/80 p-2.5 rounded border border-rose-500/30">
@@ -185,7 +181,6 @@ const GeneralOverview = ({ stations, rivers }) => {
             </div>
           )}
 
-          {/* Alertas Meteorológicos */}
           {enchenteRisks.length > 0 && (
             <div className="bg-blue-900/20 border border-blue-500/30 p-4 rounded-xl">
               <h3 className="text-blue-400 font-bold flex items-center gap-2 mb-2 text-sm"><Droplets size={16}/> RISCO CHUVA FORTE (ACUMULADO)</h3>
@@ -238,7 +233,6 @@ const GeneralOverview = ({ stations, rivers }) => {
 // ==========================================
 const StationTerminal = ({ data }) => {
   if (!data) return <div className="bg-slate-900/50 rounded-2xl animate-pulse h-full"></div>;
-
   const flightData = getFlightCategory(data.current.visibility, data.current.gusts);
 
   return (
@@ -443,20 +437,24 @@ export default function App() {
       } catch (error) { console.error("Erro ao buscar radar", error); }
     };
 
-    // FETCH: RIOS DA ANA VIA PROXY
+    // FETCH: RIOS DA ANA VIA PROXY (COM BLINDAGEM DE CONTINGÊNCIA)
     const fetchRivers = async () => {
       const updatedRivers = await Promise.all(INITIAL_RIVERS.map(async (rio) => {
         try {
           const urlANA = `http://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosTempoReal?codEstacao=${rio.cod}`;
-          const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(urlANA)}`;
+          // Utilizando endpoint 'raw' do AllOrigins para evitar quebra de parse de JSON
+          const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(urlANA)}`;
           const res = await fetch(proxyUrl);
-          const data = await res.json();
           
+          if (!res.ok) throw new Error("Proxy falhou");
+          
+          const xmlText = await res.text();
           const parser = new DOMParser();
-          const xml = parser.parseFromString(data.contents, "text/xml");
+          const xml = parser.parseFromString(xmlText, "text/xml");
           const niveis = xml.getElementsByTagName("Nivel");
           
           let nivelAtual = null;
+          // Loop para pegar o primeiro dado válido (a ANA às vezes manda tags vazias no início do XML)
           for (let i = 0; i < niveis.length; i++) {
             const val = niveis[i].textContent;
             if (val && !isNaN(val) && val.trim() !== "") {
@@ -464,10 +462,17 @@ export default function App() {
               break;
             }
           }
-          return { ...rio, level: nivelAtual ? parseFloat(nivelAtual) : null };
+          
+          // Se encontrou dado real, usa. Se não, ativa contingência.
+          if (nivelAtual) {
+            return { ...rio, level: parseFloat(nivelAtual), isBackup: false };
+          } else {
+            return { ...rio, level: rio.backupLevel, isBackup: true };
+          }
+          
         } catch (e) {
-          console.error(`Erro ao buscar dados do rio ${rio.name}:`, e);
-          return { ...rio, level: null };
+          console.error(`Falha de conexão com a estação ANA do ${rio.name}. Ativando Contingência.`, e);
+          return { ...rio, level: rio.backupLevel, isBackup: true };
         }
       }));
       setRiverData(updatedRivers);
