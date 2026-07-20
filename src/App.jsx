@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Cloud, CloudDrizzle, CloudLightning, CloudRain, CloudSun, Moon, Sun, Wind, Droplets } from 'lucide-react';
-import { MapContainer, TileLayer, CircleMarker, Tooltip } from 'react-leaflet';
+import { MapContainer, TileLayer, CircleMarker, Tooltip, Circle, Polyline } from 'react-leaflet';
+// A LINHA ABAIXO MATA O BUG DO MAPA CINZA PELA METADE:
+import 'leaflet/dist/leaflet.css';
 
 // ==========================================
 // FUNÇÕES AUXILIARES
@@ -22,7 +24,6 @@ const getTempColor = (code) => {
   return "text-yellow-400";
 };
 
-// Converte a data para o dia da semana
 const getDayName = (dateString, index) => {
   if (index === 0) return "HOJE";
   const date = new Date(dateString + "T12:00:00");
@@ -37,8 +38,6 @@ const WeatherCard = ({ data }) => {
 
   return (
     <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-white/10 flex flex-col gap-6">
-      
-      {/* 1. CABEÇALHO */}
       <div className="flex justify-between items-center">
         <h2 className="text-lg font-bold text-gray-200 tracking-wider">📍 {data.city.toUpperCase()}</h2>
         <span className="text-sm font-medium bg-black/40 px-3 py-1 rounded-full text-blue-200">
@@ -46,7 +45,6 @@ const WeatherCard = ({ data }) => {
         </span>
       </div>
 
-      {/* 2. CLIMA ATUAL */}
       <div className="flex items-center gap-6">
         <div className="transform scale-[2] ml-2">
           {getWeatherIcon(data.current.code, data.current.isDay)}
@@ -67,7 +65,6 @@ const WeatherCard = ({ data }) => {
         </div>
       </div>
 
-      {/* 3. TIMELINE 6 HORAS */}
       <div className="grid grid-cols-6 gap-2 mt-2 pt-6 border-t border-white/10">
         {data.hourly.map((hour, idx) => (
           <div key={idx} className="flex flex-col items-center gap-2">
@@ -83,7 +80,6 @@ const WeatherCard = ({ data }) => {
         ))}
       </div>
 
-      {/* 4. PANORAMA SEMANAL (5 DIAS) */}
       <div className="grid grid-cols-5 gap-2 mt-2 pt-6 border-t border-white/10">
         {data.forecast.map((day, idx) => (
           <div key={idx} className="flex flex-col items-center gap-2 bg-black/20 p-2 rounded-xl">
@@ -112,13 +108,11 @@ export default function App() {
   const [radar, setRadar] = useState({ host: "", path: "", time: "" });
 
   useEffect(() => {
-    // Busca Dados do Clima (Open-Meteo)
     const fetchWeather = async (lat, lon, city) => {
       const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,wind_speed_10m&hourly=temperature_2m,weather_code,precipitation&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,uv_index_max&timezone=America%2FSao_Paulo`;
       const res = await fetch(url);
       const json = await res.json();
 
-      // Timeline 6 horas
       const currentHourIdx = new Date().getHours();
       let hourlyForecast = [];
       for (let i = 1; i <= 6; i++) {
@@ -133,7 +127,6 @@ export default function App() {
         }
       }
 
-      // Previsão 5 dias
       let daysForecast = [];
       for (let i = 0; i < 5; i++) {
         daysForecast.push({
@@ -165,13 +158,12 @@ export default function App() {
       };
     };
 
-    // Busca Dados do Radar (RainViewer)
     const fetchRadar = async () => {
       try {
         const res = await fetch("https://api.rainviewer.com/public/weather-maps.json");
         const data = await res.json();
         const past = data.radar.past;
-        const last = past[past.length - 1]; // Pega a última varredura
+        const last = past[past.length - 1]; 
         
         const dateObj = new Date(last.time * 1000);
         const timeStr = dateObj.toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' });
@@ -194,6 +186,10 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
+  // Coordenadas das bases para ancorar o HUD
+  const hacoCoords = [-29.92, -51.18];
+  const bageCoords = [-31.33, -54.11];
+
   return (
     <div className="min-h-screen p-4 md:p-8 max-w-6xl mx-auto flex flex-col gap-8">
       <div className="flex items-center gap-3 mb-2">
@@ -201,40 +197,41 @@ export default function App() {
         <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">Painel Operacional HACO</h1>
       </div>
       
-      {/* MÓDULO 1: CARTÕES DE CLIMA */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <WeatherCard data={weatherData.bage} />
         <WeatherCard data={weatherData.canoas} />
       </div>
 
-      {/* MÓDULO 2: RADAR TÁTICO INTERATIVO */}
-      <div className="bg-white/10 backdrop-blur-md rounded-2xl p-1 shadow-xl border border-white/10 overflow-hidden relative">
+      <div className="bg-white/10 backdrop-blur-md rounded-2xl p-1 shadow-2xl border border-white/10 overflow-hidden relative mt-4">
         
-        {/* HUD de Varredura Overlay */}
+        {/* CAIXA DE TELEMETRIA TÁTICA (HUD) */}
         <div className="absolute top-4 left-4 z-[400] bg-black/80 p-3 rounded-lg border border-white/10 shadow-lg pointer-events-none">
           <div className="flex items-center gap-2 mb-1">
             <span className="bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded">LIVE</span>
-            <span className="text-white text-xs font-bold">RADAR TÁTICO NEXRAD</span>
+            <span className="text-white text-xs font-bold tracking-widest">RADAR TÁTICO NEXRAD</span>
           </div>
           <div className="text-[#30D158] text-[10px] font-mono mt-2">OP: HACO CTR</div>
-          <div className="text-[#30D158] text-[10px] font-mono">ÚLTIMA VARREDURA: {radar.time || "--:--"}</div>
+          <div className="text-[#30D158] text-[10px] font-mono">RNG: 300KM MAX</div>
+          <div className="text-[#30D158] text-[10px] font-mono mt-1 pt-1 border-t border-[#30D158]/30">
+            VARREDURA: {radar.time || "--:--"}
+          </div>
         </div>
 
-        {/* Mapa Leaflet */}
-        <div className="h-[450px] w-full rounded-xl overflow-hidden bg-[#0f172a]">
+        {/* MAPA INTERATIVO (Agora com Fundo Preto para não dar flash branco) */}
+        <div className="h-[500px] w-full rounded-xl overflow-hidden bg-[#0a0a0a]">
           <MapContainer 
             center={[-30.627, -52.646]} 
-            zoom={7} 
-            style={{ height: '100%', width: '100%' }}
+            zoom={6} 
+            style={{ height: '100%', width: '100%', background: '#0a0a0a' }}
             zoomControl={false}
           >
-            {/* Mapa Base Escuro */}
+            {/* Mapa Base Escuro (CartoDB) */}
             <TileLayer
               url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
               attribution='&copy; CartoDB'
             />
             
-            {/* Camada do Radar (RainViewer - Cor Padrão de Aviação NEXRAD = 6) */}
+            {/* Camada do Radar (RainViewer) */}
             {radar.path && (
               <TileLayer
                 url={`${radar.host}${radar.path}/256/{z}/{x}/{y}/6/1_1.png`}
@@ -242,18 +239,32 @@ export default function App() {
               />
             )}
 
-            {/* Pinos Táticos */}
-            <CircleMarker center={[-29.92, -51.18]} radius={6} color="#000" weight={2} fillColor="#30D158" fillOpacity={1}>
-              <Tooltip direction="right" offset={[10, 0]} opacity={1} permanent className="font-bold bg-transparent text-white border-0 shadow-none">
-                Canoas
+            {/* =====================================
+                HUD TÁTICO (Desenhado no Mapa)
+                ===================================== */}
+            
+            {/* 1. Crosshair (Eixos N-S e L-O cruzando o HACO) */}
+            <Polyline positions={[[-25.0, -51.18], [-35.0, -51.18]]} color="#30D158" weight={1} opacity={0.4} />
+            <Polyline positions={[[-29.92, -58.0], [-29.92, -45.0]]} color="#30D158" weight={1} opacity={0.4} />
+
+            {/* 2. Anéis de Alcance (100km, 200km, 300km) */}
+            <Circle center={hacoCoords} radius={100000} color="#30D158" weight={1} fill={false} dashArray="4, 4" opacity={0.6} />
+            <Circle center={hacoCoords} radius={200000} color="#30D158" weight={1} fill={false} dashArray="4, 4" opacity={0.6} />
+            <Circle center={hacoCoords} radius={300000} color="#30D158" weight={1} fill={false} dashArray="4, 4" opacity={0.6} />
+
+            {/* 3. Pinos Base */}
+            <CircleMarker center={hacoCoords} radius={6} color="#000" weight={2} fillColor="#30D158" fillOpacity={1}>
+              <Tooltip direction="right" offset={[10, 0]} opacity={1} permanent className="font-bold bg-black/60 text-white border-0 shadow-none text-xs rounded">
+                CANOAS (HACO)
               </Tooltip>
             </CircleMarker>
 
-            <CircleMarker center={[-31.33, -54.11]} radius={6} color="#000" weight={2} fillColor="#FFD60A" fillOpacity={1}>
-              <Tooltip direction="right" offset={[10, 0]} opacity={1} permanent className="font-bold bg-transparent text-white border-0 shadow-none">
-                Bagé
+            <CircleMarker center={bageCoords} radius={6} color="#000" weight={2} fillColor="#FFD60A" fillOpacity={1}>
+              <Tooltip direction="left" offset={[-10, 0]} opacity={1} permanent className="font-bold bg-black/60 text-white border-0 shadow-none text-xs rounded">
+                BAGÉ
               </Tooltip>
             </CircleMarker>
+
           </MapContainer>
         </div>
       </div>
