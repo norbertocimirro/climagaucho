@@ -437,24 +437,39 @@ export default function App() {
       } catch (error) { console.error("Erro ao buscar radar", error); }
     };
 
-    // FETCH: RIOS DA ANA VIA PROXY (COM BLINDAGEM DE CONTINGÊNCIA)
+   // FETCH: RIOS DA ANA VIA MULTI-PROXY (REDUNDÂNCIA TÁTICA)
     const fetchRivers = async () => {
       const updatedRivers = await Promise.all(INITIAL_RIVERS.map(async (rio) => {
         try {
           const urlANA = `http://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosTempoReal?codEstacao=${rio.cod}`;
-          // Utilizando endpoint 'raw' do AllOrigins para evitar quebra de parse de JSON
-          const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(urlANA)}`;
-          const res = await fetch(proxyUrl);
+          let xmlText = null;
           
-          if (!res.ok) throw new Error("Proxy falhou");
-          
-          const xmlText = await res.text();
+          // TENTATIVA 1: Acesso RAW Direto
+          try {
+            const res1 = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(urlANA)}`, { cache: "no-store" });
+            if (res1.ok) xmlText = await res1.text();
+            else throw new Error("Falha RAW");
+          } catch (e1) {
+            // TENTATIVA 2: Acesso Encapsulado em JSON (Bypass de Segurança)
+            try {
+              const res2 = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(urlANA)}`);
+              if (res2.ok) {
+                const data = await res2.json();
+                xmlText = data.contents;
+              } else throw new Error("Falha GET JSON");
+            } catch (e2) {
+              throw new Error("Bloqueio total de Proxy");
+            }
+          }
+
+          if (!xmlText || !xmlText.includes('<Nivel>')) throw new Error("Sem dados na estação");
+
           const parser = new DOMParser();
           const xml = parser.parseFromString(xmlText, "text/xml");
           const niveis = xml.getElementsByTagName("Nivel");
           
           let nivelAtual = null;
-          // Loop para pegar o primeiro dado válido (a ANA às vezes manda tags vazias no início do XML)
+          // Pega o primeiro valor numérico válido (Evita tags vazias que a ANA costuma mandar)
           for (let i = 0; i < niveis.length; i++) {
             const val = niveis[i].textContent;
             if (val && !isNaN(val) && val.trim() !== "") {
@@ -463,7 +478,6 @@ export default function App() {
             }
           }
           
-          // Se encontrou dado real, usa. Se não, ativa contingência.
           if (nivelAtual) {
             return { ...rio, level: parseFloat(nivelAtual), isBackup: false };
           } else {
@@ -471,7 +485,7 @@ export default function App() {
           }
           
         } catch (e) {
-          console.error(`Falha de conexão com a estação ANA do ${rio.name}. Ativando Contingência.`, e);
+          console.warn(`Alerta de Conexão (Rio ${rio.name}): Usando Contingência.`);
           return { ...rio, level: rio.backupLevel, isBackup: true };
         }
       }));
