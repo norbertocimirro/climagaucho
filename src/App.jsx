@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { Cloud, CloudDrizzle, CloudLightning, CloudRain, CloudSun, Moon, Sun, Wind, Droplets, Eye, Gauge, AlertTriangle, CheckCircle2, Thermometer, Compass, Sunrise, Sunset, ShieldAlert, Activity, Crosshair, CloudCog, Siren, Map as MapIcon, Waves, ActivitySquare, ServerCrash } from 'lucide-react';
+import { Cloud, CloudDrizzle, CloudLightning, CloudRain, CloudSun, Moon, Sun, Wind, Droplets, Eye, Gauge, AlertTriangle, CheckCircle2, Thermometer, Compass, Sunrise, Sunset, ShieldAlert, Activity, Crosshair, CloudCog, Siren, Map as MapIcon, Waves, ActivitySquare } from 'lucide-react';
 import { MapContainer, TileLayer, CircleMarker, Tooltip, Circle, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 
 // ==========================================
-// 1. CONFIGURAÇÕES GLOBAIS - C2 RS
+// 1. CONFIGURAÇÕES GLOBAIS - BASES E RIOS
 // ==========================================
 const BASES = [
-  { id: 'RS-GENERAL', name: 'PANORAMA ESTADUAL RS', lat: -30.0, lon: -53.2 },
+  { id: 'RS-GENERAL', name: 'SITUAÇÃO GERAL DO ESTADO', lat: -30.0, lon: -53.2 },
   { id: 'HYDRO', name: 'BACIAS HIDROGRÁFICAS', lat: -29.8, lon: -51.5 },
   { id: 'SBCO', name: 'CANOAS (HACO)', lat: -29.94, lon: -51.15 },
   { id: 'SBPA', name: 'PORTO ALEGRE', lat: -29.99, lon: -51.17 },
@@ -69,10 +69,11 @@ const MapAutoTracker = ({ center, zoom }) => {
 };
 
 // ==========================================
-// 4. COMPONENTE: BACIAS HIDROGRÁFICAS (SGB/ANA)
+// 4. COMPONENTE: BACIAS HIDROGRÁFICAS (BLINDADO)
 // ==========================================
 const HydrologyTerminal = ({ rivers }) => {
   const getRiverStatus = (river) => {
+    if (typeof river.level !== 'number') return { color: "bg-slate-600", text: "OFFLINE", bg: "bg-slate-900/50 border-slate-700/50" };
     if (river.level >= river.flood) return { color: "bg-rose-500", text: "INUNDAÇÃO", bg: "bg-rose-900/20 border-rose-500/50 shadow-[0_0_15px_rgba(244,63,94,0.1)]" };
     if (river.level >= river.alert) return { color: "bg-amber-500", text: "ALERTA", bg: "bg-amber-900/20 border-amber-500/50" };
     return { color: "bg-blue-500", text: "NORMAL", bg: "bg-slate-900/80 border-slate-700/50" };
@@ -82,7 +83,7 @@ const HydrologyTerminal = ({ rivers }) => {
     <div className="bg-[#0b1120]/90 backdrop-blur-xl rounded-2xl p-4 lg:p-6 border border-slate-700 shadow-2xl h-full overflow-y-auto custom-scrollbar">
       <div className="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
         <div>
-          <div className="flex items-center gap-1 text-[9px] text-blue-400 font-bold tracking-widest mb-1">
+          <div className="flex items-center gap-1 text-[10px] text-blue-400 font-bold tracking-widest mb-1">
             <Waves size={10} /> TELEMETRIA: ANA / SGB
           </div>
           <h2 className="text-xl lg:text-2xl font-black text-white">BACIAS HIDROGRÁFICAS</h2>
@@ -92,8 +93,11 @@ const HydrologyTerminal = ({ rivers }) => {
       <div className="space-y-4">
         {rivers.map(river => {
           const status = getRiverStatus(river);
-          const maxLevel = Math.max(river.flood * 1.2, river.level ? river.level * 1.1 : 10);
-          const levelPct = river.level ? (river.level / maxLevel) * 100 : 0;
+          // Prevenção de divisão por zero e falha de NaN (Not a Number)
+          const validLevel = typeof river.level === 'number' ? river.level : 0;
+          const maxLevel = Math.max(river.flood * 1.2, validLevel * 1.1, 10);
+          
+          const levelPct = typeof river.level === 'number' ? (river.level / maxLevel) * 100 : 0;
           const alertPct = (river.alert / maxLevel) * 100;
           const floodPct = (river.flood / maxLevel) * 100;
 
@@ -103,13 +107,17 @@ const HydrologyTerminal = ({ rivers }) => {
                 <div>
                   <span className="font-bold text-slate-200 block">{river.name}</span>
                   <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded mt-1 inline-block ${river.isBackup ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'}`}>
-                    {river.isBackup ? 'CONTINGÊNCIA (OFFLINE)' : 'SATÉLITE (REAL)'}
+                    {river.isBackup ? 'MONITORAMENTO ALTERNATIVO' : 'SATÉLITE (REAL)'}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`text-2xl font-black ${status.text === 'INUNDAÇÃO' ? 'text-rose-400' : status.text === 'ALERTA' ? 'text-amber-400' : 'text-white'}`}>
-                    {river.level.toFixed(2)}m
-                  </span>
+                  {typeof river.level === 'number' ? (
+                    <span className={`text-2xl font-black ${status.text === 'INUNDAÇÃO' ? 'text-rose-400' : status.text === 'ALERTA' ? 'text-amber-400' : 'text-white'}`}>
+                      {river.level.toFixed(2)}m
+                    </span>
+                  ) : (
+                    <span className="text-xs font-bold text-slate-500 flex items-center gap-1"><ActivitySquare size={12}/> SEM SINAL</span>
+                  )}
                 </div>
               </div>
 
@@ -120,7 +128,7 @@ const HydrologyTerminal = ({ rivers }) => {
                 <div className="absolute top-[-14px] w-0.5 h-6 bg-rose-500 z-10" style={{ left: `${floodPct}%` }}>
                   <span className="absolute -top-3 -left-4 text-[8px] text-rose-500 font-bold">INUNDAÇÃO</span>
                 </div>
-                {river.level !== null && (
+                {typeof river.level === 'number' && (
                   <div className={`h-full rounded-full transition-all duration-1000 ${status.color}`} style={{ width: `${levelPct}%` }}></div>
                 )}
               </div>
@@ -142,10 +150,10 @@ const HydrologyTerminal = ({ rivers }) => {
 // 5. COMPONENTE: VISÃO GERAL ESTADUAL
 // ==========================================
 const GeneralOverview = ({ stations, rivers }) => {
-  const enchenteRisks = stations.filter(s => s.forecast[0].rain > 30);
-  const vendavalRisks = stations.filter(s => s.current.gusts > 45);
-  const nevoeiroRisks = stations.filter(s => s.current.visibility < 3000);
-  const riosEmRisco = rivers.filter(r => r.level >= r.alert);
+  const enchenteRisks = stations.filter(s => s.forecast && s.forecast[0] && s.forecast[0].rain > 30);
+  const vendavalRisks = stations.filter(s => s.current && s.current.gusts > 45);
+  const nevoeiroRisks = stations.filter(s => s.current && s.current.visibility < 3000);
+  const riosEmRisco = rivers.filter(r => typeof r.level === 'number' && r.level >= r.alert);
 
   const hasAlerts = enchenteRisks.length > 0 || vendavalRisks.length > 0 || nevoeiroRisks.length > 0 || riosEmRisco.length > 0;
 
@@ -232,7 +240,7 @@ const GeneralOverview = ({ stations, rivers }) => {
 // 6. COMPONENTE: TERMINAL DO AEROPORTO
 // ==========================================
 const StationTerminal = ({ data }) => {
-  if (!data) return <div className="bg-slate-900/50 rounded-2xl animate-pulse h-full"></div>;
+  if (!data || !data.current) return <div className="bg-slate-900/50 rounded-2xl animate-pulse h-full"></div>;
   const flightData = getFlightCategory(data.current.visibility, data.current.gusts);
 
   return (
@@ -340,7 +348,7 @@ const StationTerminal = ({ data }) => {
 };
 
 // ==========================================
-// 7. MOTOR PRINCIPAL (APP)
+// 7. MOTOR PRINCIPAL (APP C2)
 // ==========================================
 export default function App() {
   const [stationsData, setStationsData] = useState([]);
@@ -353,7 +361,7 @@ export default function App() {
   
   const [globalThreat, setGlobalThreat] = useState({ level: 'GREEN', text: 'INICIALIZANDO SISTEMAS...' });
 
-  // FETCH: METEOROLOGIA
+  // FETCH: METEOROLOGIA DECEA
   useEffect(() => {
     const fetchWeather = async () => {
       try {
@@ -425,7 +433,7 @@ export default function App() {
       } catch (error) { console.error("Erro ao buscar clima", error); }
     };
 
-    // FETCH: RADAR
+    // FETCH: RADAR METEOROLÓGICO
     const fetchRadar = async () => {
       try {
         const res = await fetch("https://api.rainviewer.com/public/weather-maps.json");
@@ -437,14 +445,14 @@ export default function App() {
       } catch (error) { console.error("Erro ao buscar radar", error); }
     };
 
-// FETCH: SISTEMA HÍBRIDO (ANA + SCRAPER DE SITES INDEPENDENTES)
+    // FETCH: SISTEMA HÍBRIDO (ANA + SCRAPER WEB BLINDADO)
     const fetchRivers = async () => {
       const updatedRivers = await Promise.all(INITIAL_RIVERS.map(async (rio) => {
         let nivelAtual = null;
-        let fonte = 'OFFLINE';
+        let isBackup = true;
 
         try {
-          // TÁTICA 1: Tenta o servidor oficial da ANA com Anti-Cache
+          // TÁTICA 1: Tenta o servidor oficial da ANA
           const timestamp = new Date().getTime();
           const urlANA = `http://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosTempoReal?codEstacao=${rio.cod}&_=${timestamp}`;
           const proxyANA = `https://api.allorigins.win/raw?url=${encodeURIComponent(urlANA)}`;
@@ -461,17 +469,17 @@ export default function App() {
                 const val = niveis[i].textContent;
                 if (val && !isNaN(val) && val.trim() !== "") {
                   nivelAtual = (parseFloat(val) / 100).toFixed(2);
-                  fonte = false; // false = 'SATÉLITE (REAL)'
+                  isBackup = false; // false = 'SATÉLITE (REAL)'
                   break;
                 }
               }
             }
           }
         } catch (e) {
-          console.warn(`Governo falhou para ${rio.name}. Preparando Tática 2...`);
+          console.warn(`Governo falhou para ${rio.name}.`);
         }
 
-        // TÁTICA 2: Se a ANA falhar, varre a internet (Scraper de Sites Comunitários)
+        // TÁTICA 2: Varre a internet (Sites de Monitoramento independentes)
         if (!nivelAtual && rio.siteUrl) {
           try {
             const proxyWeb = `https://api.allorigins.win/raw?url=${encodeURIComponent(rio.siteUrl)}`;
@@ -479,13 +487,12 @@ export default function App() {
             
             if (resWeb.ok) {
               const htmlText = await resWeb.text();
-              // Regex de Inteligência: Procura no texto do site a frase "é de X,XX m"
-              const match = htmlText.match(/é de\s+([0-9,]+)\s+m/i);
+              // Procura o valor exato no texto HTML (ex: 2,18 m ou 14.50m)
+              const match = htmlText.match(/([0-9]+[,.][0-9]+)\s*m/i);
               
               if (match && match[1]) {
-                nivelAtual = match[1].replace(',', '.'); // Converte padrão BR para Americano
-                fonte = false; // Dado real recuperado da web
-                console.log(`Sucesso: Dado recuperado da web para ${rio.name}: ${nivelAtual}m`);
+                nivelAtual = match[1].replace(',', '.'); 
+                isBackup = true; // true = 'MONITORAMENTO ALTERNATIVO'
               }
             }
           } catch (e) {
@@ -493,11 +500,11 @@ export default function App() {
           }
         }
 
-        // RESULTADO FINAL
-        if (nivelAtual) {
-          return { ...rio, level: parseFloat(nivelAtual), isBackup: fonte };
+        // RETORNO 100% SEGURO
+        if (nivelAtual !== null && !isNaN(nivelAtual)) {
+          return { ...rio, level: parseFloat(nivelAtual), isBackup: isBackup };
         } else {
-          return { ...rio, level: null, isBackup: true }; // Se tudo falhar, assume offline
+          return { ...rio, level: null, isBackup: true }; 
         }
       }));
       
