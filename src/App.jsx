@@ -437,51 +437,22 @@ export default function App() {
       } catch (error) { console.error("Erro ao buscar radar", error); }
     };
 
-  // FETCH: RIOS DA ANA VIA PROXY ARRAY (FORÇA BRUTA)
+// FETCH: RIOS DA ANA VIA SERVIDOR PRÓPRIO (VERCEL BACKEND)
     const fetchRivers = async () => {
       const updatedRivers = await Promise.all(INITIAL_RIVERS.map(async (rio) => {
         try {
-          const urlANA = `http://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosTempoReal?codEstacao=${rio.cod}`;
+          // Bate na SUA própria API na Vercel (bypassa o bloqueio do governo)
+          const res = await fetch(`/api/ana?cod=${rio.cod}`);
           
-          // Arsenal de Proxies: Se um falhar, o sistema tenta o próximo instantaneamente
-          const proxies = [
-            `https://corsproxy.io/?${encodeURIComponent(urlANA)}`,
-            `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(urlANA)}`,
-            `https://api.allorigins.win/raw?url=${encodeURIComponent(urlANA)}`
-          ];
-
-          let xmlText = null;
+          if (!res.ok) throw new Error("Falha no servidor local da Vercel");
           
-          for (let proxy of proxies) {
-            try {
-              // AbortSignal para não travar o painel se a ANA demorar mais de 6 segundos
-              const controller = new AbortController();
-              const timeoutId = setTimeout(() => controller.abort(), 6000);
-              
-              const res = await fetch(proxy, { signal: controller.signal, cache: "no-store" });
-              clearTimeout(timeoutId);
-
-              if (res.ok) {
-                const text = await res.text();
-                // Verifica se o texto retornado é realmente o XML da ANA e não uma página de erro do proxy
-                if (text && text.includes('<Nivel>')) {
-                  xmlText = text;
-                  break; // Sucesso! Sai do loop de tentativas
-                }
-              }
-            } catch (e) {
-              // Falhou neste proxy (CORS, Timeout, etc). O loop segue em silêncio para o próximo.
-            }
-          }
-
-          if (!xmlText) throw new Error("Bloqueio total nos 3 proxies ou ANA fora do ar.");
-
-          // Lendo o XML oficial
+          const xmlText = await res.text();
           const parser = new DOMParser();
           const xml = parser.parseFromString(xmlText, "text/xml");
           const niveis = xml.getElementsByTagName("Nivel");
           
           let nivelAtual = null;
+          // Procura a primeira medição válida
           for (let i = 0; i < niveis.length; i++) {
             const val = niveis[i].textContent;
             if (val && !isNaN(val) && val.trim() !== "") {
