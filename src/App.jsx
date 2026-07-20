@@ -205,10 +205,6 @@ export default function App() {
   return (
     <div className="min-h-screen p-4 md:p-8 max-w-6xl mx-auto flex flex-col gap-8">
       
-      {/* 
-        FILTRO TÁTICO HACKER:
-        Inverte as cores do OpenStreetMap para criar um modo noturno permanente e inquebrável.
-      */}
       <style>{`
         .leaflet-container {
           background-color: #0f172a !important; 
@@ -219,7 +215,7 @@ export default function App() {
           margin: 0 !important;
           padding: 0 !important;
         }
-        /* O milagre do modo noturno no mapa base livre */
+        /* Modo noturno absoluto no mapa base */
         .dark-base-map {
           filter: invert(100%) hue-rotate(180deg) brightness(85%) contrast(85%) grayscale(20%);
         }
@@ -262,13 +258,13 @@ export default function App() {
             center={[-30.627, -52.646]} 
             zoom={6} 
             maxZoom={12} 
-            minZoom={4}
+            minZoom={5}
             style={{ height: '100%', width: '100%' }}
             zoomControl={true}
           >
             <MapResizer />
 
-            {/* MAPA BASE BLINDADO: OpenStreetMap com classe CSS Invertida */}
+            {/* MAPA BASE DAS RUAS (Funciona perfeitamente em qualquer zoom) */}
             <TileLayer
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               attribution='&copy; OpenStreetMap'
@@ -276,13 +272,17 @@ export default function App() {
               maxZoom={19}
             />
             
-            {/* CAMADA DO RADAR: Configurada para esticar sem pedir novas imagens */}
+            {/* 
+              CAMADA DO RADAR DE CHUVA (A BALA DE PRATA)
+              maxNativeZoom={6}: Avisa ao Leaflet que a API de chuva não tem imagens acima do zoom 6.
+              maxZoom={18}: Permite que o usuário dê zoom até 18, esticando a imagem 6.
+            */}
             {radar.path && (
               <TileLayer
                 url={`${radar.host}${radar.path}/256/{z}/{x}/{y}/6/1_1.png`}
-                opacity={0.7}
-                maxNativeZoom={8}
-                maxZoom={12}
+                opacity={0.65}
+                maxNativeZoom={6} 
+                maxZoom={18}
                 zIndex={10}
               />
             )}
