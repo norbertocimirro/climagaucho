@@ -35,7 +35,6 @@ const MapResizer = () => {
   return null;
 };
 
-// Captura a Latitude e Longitude do mouse em tempo real
 const TargetTelemetry = () => {
   const [pos, setPos] = useState({ lat: 0, lng: 0 });
   useMapEvents({
@@ -58,8 +57,7 @@ const TerminalCard = ({ data }) => {
 
   return (
     <div className="bg-[#050505] p-5 border border-gray-800 relative overflow-hidden flex flex-col gap-4 font-mono">
-      {/* Grid Background Effect */}
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:20px_20px] pointer-events-none"></div>
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:20px_20px] pointer-events-none"></div>
       
       {/* HEADER */}
       <div className="flex justify-between items-end border-b border-gray-700 pb-2 z-10">
@@ -73,7 +71,7 @@ const TerminalCard = ({ data }) => {
         </div>
       </div>
 
-      {/* DADOS METAR/ATUAIS */}
+      {/* DADOS AVANÇADOS DE AVIAÇÃO */}
       <div className="flex items-center justify-between z-10 py-2">
         <div className="flex items-center gap-4">
           <div className="p-3 bg-gray-900 border border-gray-700">
@@ -85,11 +83,19 @@ const TerminalCard = ({ data }) => {
           </div>
         </div>
         
-        {/* Painel de Aviação */}
-        <div className="flex flex-col gap-2 text-[10px] text-gray-400 bg-black p-3 border border-gray-800 min-w-[120px]">
+        {/* Painel Estendido */}
+        <div className="flex flex-col gap-1.5 text-[10px] text-gray-400 bg-black p-3 border border-gray-800 min-w-[130px]">
           <div className="flex items-center justify-between gap-2">
             <span className="flex items-center gap-1 text-gray-500"><Wind size={12}/> WND</span>
             <span className="text-white">{data.current.windSpd} KM/H</span>
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <span className="flex items-center gap-1 text-red-500"><Wind size={12}/> GUST</span>
+            <span className="text-white">{data.current.gusts} KM/H</span>
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <span className="flex items-center gap-1 text-gray-500"><Cloud size={12}/> CLD</span>
+            <span className="text-white">{data.current.clouds}%</span>
           </div>
           <div className="flex items-center justify-between gap-2">
             <span className="flex items-center gap-1 text-gray-500"><Eye size={12}/> VIS</span>
@@ -102,7 +108,7 @@ const TerminalCard = ({ data }) => {
         </div>
       </div>
 
-      {/* PREVISÃO DE CURTO PRAZO (HORAS) */}
+      {/* PREVISÃO CURTO PRAZO */}
       <div className="text-[10px] text-gray-500 mt-2 z-10">SHORT-TERM FORECAST (6H)</div>
       <div className="grid grid-cols-6 gap-1 z-10">
         {data.hourly.map((hour, idx) => (
@@ -128,8 +134,8 @@ export default function App() {
 
   useEffect(() => {
     const fetchWeather = async (lat, lon, city) => {
-      // API Expandida: visibility, pressure_msl
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,is_day,precipitation,weather_code,wind_speed_10m,visibility,pressure_msl&hourly=temperature_2m,weather_code,precipitation&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=America%2FSao_Paulo`;
+      // API 100% Completa
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,is_day,precipitation,weather_code,wind_speed_10m,wind_gusts_10m,visibility,cloud_cover,pressure_msl&hourly=temperature_2m,weather_code,precipitation&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=America%2FSao_Paulo`;
       const res = await fetch(url);
       const json = await res.json();
 
@@ -157,6 +163,8 @@ export default function App() {
           visibility: json.current.visibility || 10000,
           pressure: Math.round(json.current.pressure_msl),
           windSpd: Math.round(json.current.wind_speed_10m),
+          gusts: Math.round(json.current.wind_gusts_10m),
+          clouds: json.current.cloud_cover,
           precip: json.current.precipitation
         },
         daily: {
@@ -187,16 +195,18 @@ export default function App() {
       setWeatherData({ bage, canoas });
       await fetchRadar();
 
-      // LÓGICA DE DEFESA CIVIL (THREAT LEVEL)
-      const maxWind = Math.max(bage.current.windSpd, canoas.current.windSpd);
+      // INTELIGÊNCIA CRÍTICA DE VOO (VMC vs IMC)
+      const maxGust = Math.max(bage.current.gusts, canoas.current.gusts);
       const worstCode = Math.max(bage.current.code, canoas.current.code);
+      const minVis = Math.min(bage.current.visibility, canoas.current.visibility);
       
-      if (maxWind > 45 || worstCode >= 80) {
-        setThreatLevel({ level: 'RED', text: 'ALERTA SEVERO: RISCO OPERACIONAL' });
-      } else if (maxWind > 30 || worstCode >= 51) {
-        setThreatLevel({ level: 'YELLOW', text: 'ATENÇÃO: CONDIÇÕES DEGRADADAS' });
+      // Regras de Condição de Voo Visual e Alerta de Base
+      if (minVis <= 3000 || maxGust >= 60 || worstCode >= 95) {
+        setThreatLevel({ level: 'RED', text: 'ALERTA SEVERO (NO-GO): VOO VFR SUSPENSO / CONDIÇÃO IMC' });
+      } else if (minVis <= 5000 || maxGust >= 40 || worstCode >= 51) {
+        setThreatLevel({ level: 'YELLOW', text: 'ATENÇÃO (MARGINAL): AVALIAR TETO E RAJADAS PARA MISSÃO' });
       } else {
-        setThreatLevel({ level: 'GREEN', text: 'CONDIÇÕES NORMAIS DE VOO/OPERAÇÃO' });
+        setThreatLevel({ level: 'GREEN', text: 'VMC (VISUAL): CONDIÇÕES NORMAIS DE OPERAÇÃO' });
       }
     };
 
@@ -208,7 +218,6 @@ export default function App() {
   const hacoCoords = [-29.92, -51.18];
   const bageCoords = [-31.33, -54.11];
 
-  // Cores do Banner de Alerta
   const threatColors = {
     RED: "bg-red-900 border-red-500 text-red-200",
     YELLOW: "bg-yellow-900 border-yellow-500 text-yellow-200",
@@ -220,7 +229,6 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#050505] p-4 md:p-6 font-mono text-gray-200 selection:bg-[#30D158] selection:text-black flex flex-col gap-4">
       
-      {/* ESTILOS DE SISTEMA & ANIMAÇÃO DO RADAR */}
       <style>{`
         body { background-color: #050505; }
         .leaflet-container { background-color: #050505 !important; cursor: crosshair !important; }
@@ -229,30 +237,15 @@ export default function App() {
         .leaflet-tooltip { background: #000 !important; border: 1px solid #30D158 !important; color: #30D158 !important; font-family: monospace; font-size: 10px; font-weight: bold; border-radius: 0 !important; box-shadow: none !important; }
         .leaflet-tooltip-right::before { border-right-color: #30D158 !important; }
         .leaflet-tooltip-left::before { border-left-color: #30D158 !important; }
-        
-        /* ANIMAÇÃO DA VARREDURA DO RADAR */
-        @keyframes scanline {
-          0% { transform: translateY(0); opacity: 0; }
-          10% { opacity: 1; }
-          90% { opacity: 1; }
-          100% { transform: translateY(500px); opacity: 0; }
-        }
-        .scanner-beam {
-          position: absolute; top: 0; left: 0; right: 0; height: 3px;
-          background: #30D158; box-shadow: 0 0 15px 2px #30D158;
-          animation: scanline 4s linear infinite;
-          z-index: 401; pointer-events: none;
-        }
       `}</style>
 
-      {/* CABEÇALHO COMANDOS / DEFESA CIVIL */}
+      {/* CABEÇALHO */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-gray-800 pb-4">
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-white tracking-[0.2em]">SISTEMA SDSOP / HACO</h1>
           <p className="text-xs text-gray-500 mt-1 tracking-widest">MONITORAMENTO METEOROLÓGICO TÁTICO</p>
         </div>
         
-        {/* BANNER DE AMEAÇA DINÂMICO */}
         <div className={`flex items-center gap-3 px-4 py-2 border ${threatColors[threatLevel.level]} animate-pulse`}>
           <ThreatIcon size={18} />
           <span className="text-xs font-bold tracking-widest">{threatLevel.text}</span>
@@ -265,13 +258,9 @@ export default function App() {
         <TerminalCard data={weatherData.canoas} />
       </div>
 
-      {/* TELA DO RADAR TÁTICO */}
+      {/* TELA DO RADAR (Sem Animações) */}
       <div className="border border-gray-800 relative bg-[#050505] mt-2">
         
-        {/* SCANNER ANIMADO */}
-        <div className="scanner-beam"></div>
-
-        {/* HUD SOBREPOSTO */}
         <div className="absolute top-4 left-4 z-[400] bg-black/90 p-3 border border-[#30D158]/50 shadow-[0_0_10px_rgba(48,209,88,0.1)] pointer-events-none">
           <div className="flex items-center gap-2 mb-2 border-b border-[#30D158]/30 pb-2">
             <span className="bg-red-600 text-white text-[9px] font-black px-1.5 py-0.5">REC</span>
@@ -292,7 +281,7 @@ export default function App() {
             maxZoom={12} 
             minZoom={5}
             style={{ height: '100%', width: '100%', background: '#050505' }}
-            zoomControl={false} // Esconde botões de zoom para visual mais limpo
+            zoomControl={false}
           >
             <MapResizer />
             <TargetTelemetry />
@@ -314,7 +303,6 @@ export default function App() {
               />
             )}
 
-            {/* EIXOS TÁTICOS COMPLETOS */}
             <Polyline positions={[[-10.0, -51.18], [-40.0, -51.18]]} color="#30D158" weight={1} opacity={0.3} dashArray="2, 6" />
             <Polyline positions={[[-29.92, -70.0], [-29.92, -30.0]]} color="#30D158" weight={1} opacity={0.3} dashArray="2, 6" />
 
