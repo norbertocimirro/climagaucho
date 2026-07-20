@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Cloud, CloudDrizzle, CloudLightning, CloudRain, CloudSun, Moon, Sun, Wind, Droplets, Eye, Gauge, AlertTriangle, CheckCircle2, Thermometer, Compass, Sunrise, Sunset, ShieldAlert, Activity, Crosshair, CloudCog } from 'lucide-react';
-import { MapContainer, TileLayer, CircleMarker, Tooltip, Circle, Polyline, useMap } from 'react-leaflet';
+import { Cloud, CloudDrizzle, CloudLightning, CloudRain, CloudSun, Moon, Sun, Wind, Droplets, Eye, Gauge, AlertTriangle, CheckCircle2, Thermometer, Compass, Sunrise, Sunset, ShieldAlert, Activity, Crosshair, CloudCog, ServerCrash } from 'lucide-react';
+import { MapContainer, TileLayer, CircleMarker, Tooltip, Circle, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 
 // ==========================================
@@ -29,7 +29,6 @@ const getWeatherIcon = (code, isDay = 1) => {
   return <Cloud className="text-slate-500" />;
 };
 
-// TRADUÇÃO DE JARGÃO DE AVIAÇÃO PARA TERMOS DIDÁTICOS
 const getFlightCategory = (visibility, windGust) => {
   if (visibility < 3000 || windGust > 50) return { 
     rule: "VOO RESTRITO", color: "bg-rose-500 text-white border-rose-500", status: "TEMPO FECHADO (CRÍTICO)", dot: "bg-rose-500 shadow-[0_0_10px_#f43f5e]" 
@@ -48,116 +47,36 @@ const getWindDirection = (degree) => {
 };
 
 // ==========================================
-// COMPONENTE: ZOOM AUTOMÁTICO CORRIGIDO
+// COMPONENTES DE CONTROLE DO MAPA
 // ==========================================
+const MapResizer = () => {
+  const map = useMap();
+  useEffect(() => {
+    const timeout = setTimeout(() => { map.invalidateSize(); }, 400);
+    return () => clearTimeout(timeout);
+  }, [map]);
+  return null;
+};
+
 const MapAutoTracker = ({ center }) => {
   const map = useMap();
   useEffect(() => {
     map.invalidateSize();
-    // Nível 10 de zoom para mergulhar bem perto da cidade selecionada
     map.flyTo(center, 10, { animate: true, duration: 1.5 });
-  }, [center, map]);
+  }, [center[0], center[1], map]); // ARRAY DE DEPENDÊNCIA BLINDADO
   return null;
 };
 
-export default function App() {
-  const [stationsData, setStationsData] = useState([]);
-  const [activeStationId, setActiveStationId] = useState('CANOAS (HACO)'); 
-  
+// ==========================================
+// COMPONENTE ISOLADO DO RADAR (ALTA PERFORMANCE)
+// ==========================================
+const RadarMap = ({ activeData, stationsData }) => {
   const [radarFrames, setRadarFrames] = useState([]);
   const [activeFrameIndex, setActiveFrameIndex] = useState(0);
   const [radarHost, setRadarHost] = useState("");
-  
-  const [globalThreat, setGlobalThreat] = useState({ level: 'GREEN', text: 'INICIALIZANDO...' });
 
   useEffect(() => {
-    const fetchWeatherForBase = async (base) => {
-      // API ultra completa
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${base.lat}&longitude=${base.lon}&current=temperature_2m,apparent_temperature,is_day,precipitation,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,relative_humidity_2m,pressure_msl,cloud_cover&hourly=temperature_2m,weather_code,precipitation,wind_gusts_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,uv_index_max,sunrise,sunset&timezone=America%2FSao_Paulo`;
-      const res = await fetch(url);
-      const json = await res.json();
-
-      const formatTime = (isoString) => new Date(isoString).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-
-      // Cálculo Ponto de Orvalho
-      const temp = json.current.temperature_2m;
-      const rh = json.current.relative_humidity_2m;
-      const dewPoint = Math.round(temp - ((100 - rh) / 5));
-
-      const currentHourIdx = new Date().getHours();
-      let hourlyForecast = [];
-      for (let i = 1; i <= 6; i++) {
-        let idx = currentHourIdx + i;
-        if (idx < json.hourly.time.length) {
-          hourlyForecast.push({
-            time: json.hourly.time[idx].split("T")[1],
-            temp: Math.round(json.hourly.temperature_2m[idx]),
-            code: json.hourly.weather_code[idx],
-            precip: json.hourly.precipitation[idx]
-          });
-        }
-      }
-
-      let daysForecast = [];
-      for (let i = 0; i < 5; i++) {
-        const dateObj = new Date(json.daily.time[i] + "T12:00:00");
-        const dayName = i === 0 ? "HOJE" : ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"][dateObj.getDay()];
-        daysForecast.push({
-          dayName: dayName,
-          code: json.daily.weather_code[i],
-          min: Math.round(json.daily.temperature_2m_min[i]),
-          max: Math.round(json.daily.temperature_2m_max[i]),
-          rain: json.daily.precipitation_sum[i]
-        });
-      }
-
-      return {
-        id: base.id,
-        name: base.name,
-        lat: base.lat,
-        lon: base.lon,
-        current: {
-          temp: Math.round(temp),
-          feels: Math.round(json.current.apparent_temperature),
-          isDay: json.current.is_day,
-          code: json.current.weather_code,
-          visibility: json.current.visibility || 10000,
-          pressure: Math.round(json.current.pressure_msl),
-          windSpd: Math.round(json.current.wind_speed_10m),
-          windDir: json.current.wind_direction_10m,
-          gusts: Math.round(json.current.wind_gusts_10m),
-          humidity: rh,
-          clouds: json.current.cloud_cover,
-          dewPoint: dewPoint
-        },
-        daily: {
-          max: Math.round(json.daily.temperature_2m_max[0]),
-          min: Math.round(json.daily.temperature_2m_min[0]),
-          uv: Math.round(json.daily.uv_index_max[0]),
-          sunrise: formatTime(json.daily.sunrise[0]),
-          sunset: formatTime(json.daily.sunset[0])
-        },
-        hourly: hourlyForecast,
-        forecast: daysForecast
-      };
-    };
-
-    const loadAll = async () => {
-      const promises = BASES.map(base => fetchWeatherForBase(base));
-      const results = await Promise.all(promises);
-      setStationsData(results);
-
-      const maxGust = Math.max(...results.map(r => r.current.gusts));
-      const minVis = Math.min(...results.map(r => r.current.visibility));
-
-      if (minVis <= 3000 || maxGust >= 60) {
-        setGlobalThreat({ level: 'RED', text: 'ALERTA: VOO SUSPENSO NA REGIÃO. VISIBILIDADE CRÍTICA OU VENTOS FORTES.' });
-      } else if (minVis <= 5000 || maxGust >= 40) {
-        setGlobalThreat({ level: 'YELLOW', text: 'ATENÇÃO: CONDIÇÕES MARGINAIS DETECTADAS PARA EVAM. AVALIAR RISCOS.' });
-      } else {
-        setGlobalThreat({ level: 'GREEN', text: 'CONDIÇÕES GERAIS FAVORÁVEIS. OPERAÇÕES TERRESTRES E AÉREAS LIBERADAS.' });
-      }
-
+    const fetchRadar = async () => {
       try {
         const res = await fetch("https://api.rainviewer.com/public/weather-maps.json");
         const data = await res.json();
@@ -169,9 +88,8 @@ export default function App() {
         console.error("Erro no Radar", error);
       }
     };
-
-    loadAll();
-    const interval = setInterval(loadAll, 1000 * 60 * 15);
+    fetchRadar();
+    const interval = setInterval(fetchRadar, 1000 * 60 * 15);
     return () => clearInterval(interval);
   }, []);
 
@@ -183,20 +101,214 @@ export default function App() {
     return () => clearInterval(loop);
   }, [radarFrames]);
 
+  const activeFrameData = radarFrames[activeFrameIndex];
+  let radarTimeLabel = "--:--";
+  let isProjection = false;
+  
+  if (activeFrameData) {
+    const d = new Date(activeFrameData.time * 1000);
+    radarTimeLabel = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    isProjection = activeFrameData.type === 'NOWCAST';
+  }
+
+  return (
+    <div className="lg:col-span-7 relative rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] border border-slate-700 p-1.5 bg-slate-900/30 backdrop-blur-sm h-full">
+      
+      {/* HUD TÁTICO DO MAPA */}
+      <div className="absolute top-4 left-4 z-[400] bg-[#020617]/90 p-3 rounded-xl border border-slate-700/50 shadow-2xl pointer-events-none backdrop-blur-md">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="bg-rose-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded animate-pulse">RADAR</span>
+          <span className="text-slate-200 text-xs font-bold tracking-widest uppercase">Meteorológico Regional</span>
+        </div>
+        <div className={`text-xl font-black tracking-widest border-t border-slate-800 pt-1 leading-none ${isProjection ? 'text-amber-400' : 'text-cyan-400'}`}>
+          {radarTimeLabel}
+        </div>
+        <div className={`text-[9px] font-bold mt-1.5 ${isProjection ? 'text-amber-500/70' : 'text-cyan-500/70'}`}>
+          {isProjection ? "PROJEÇÃO (NOWCAST 30MIN)" : "TEMPO REAL (PASSADO)"}
+        </div>
+      </div>
+
+      <div className="h-full w-full rounded-xl overflow-hidden bg-[#020617]">
+        <MapContainer 
+          center={[activeData.lat, activeData.lon]} 
+          zoom={10} 
+          maxZoom={12} 
+          minZoom={5}
+          zoomControl={true} 
+          scrollWheelZoom={true} 
+          style={{ height: '100%', width: '100%' }}
+        >
+          <MapResizer />
+          <MapAutoTracker center={[activeData.lat, activeData.lon]} />
+
+          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" className="dark-base-map" maxZoom={19} />
+          
+          {radarHost && radarFrames.map((frame, idx) => (
+            <TileLayer
+              key={`${frame.path}-${idx}`}
+              url={`${radarHost}${frame.path}/256/{z}/{x}/{y}/6/1_1.png`}
+              opacity={idx === activeFrameIndex ? 0.85 : 0}
+              maxNativeZoom={6} maxZoom={12} zIndex={10 + idx}
+            />
+          ))}
+
+          {stationsData.map((base) => {
+            const isTarget = base.id === activeData.id;
+            return (
+              <React.Fragment key={base.id}>
+                <Circle center={[base.lat, base.lon]} radius={isTarget ? 20000 : 10000} color={isTarget ? '#22d3ee' : '#64748b'} weight={isTarget ? 2 : 1} fill={false} opacity={0.5} dashArray={isTarget ? "none" : "3, 6"} />
+                <CircleMarker center={[base.lat, base.lon]} radius={isTarget ? 6 : 4} color="#000" weight={2} fillColor={isTarget ? '#22d3ee' : '#94a3b8'} fillOpacity={1} zIndexOffset={isTarget ? 200 : 100}>
+                  <Tooltip direction="top" offset={[0, -10]} opacity={1} permanent={isTarget}>{base.id}</Tooltip>
+                </CircleMarker>
+              </React.Fragment>
+            );
+          })}
+        </MapContainer>
+      </div>
+    </div>
+  );
+};
+
+// ==========================================
+// APP PRINCIPAL (CONTROLE DE ESTADO)
+// ==========================================
+export default function App() {
+  const [stationsData, setStationsData] = useState([]);
+  const [activeStationId, setActiveStationId] = useState('CANOAS (HACO)'); 
+  const [hasError, setHasError] = useState(false);
+  const [globalThreat, setGlobalThreat] = useState({ level: 'GREEN', text: 'INICIALIZANDO...' });
+
+  useEffect(() => {
+    const fetchWeatherForBase = async (base) => {
+      try {
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${base.lat}&longitude=${base.lon}&current=temperature_2m,apparent_temperature,is_day,precipitation,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,relative_humidity_2m,pressure_msl,cloud_cover&hourly=temperature_2m,weather_code,precipitation,wind_gusts_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,uv_index_max,sunrise,sunset&timezone=America%2FSao_Paulo`;
+        const res = await fetch(url);
+        
+        if (!res.ok) throw new Error("Falha na API");
+        const json = await res.json();
+
+        const formatTime = (isoString) => new Date(isoString).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+        const temp = json.current.temperature_2m || 0;
+        const rh = json.current.relative_humidity_2m || 0;
+        const dewPoint = Math.round(temp - ((100 - rh) / 5));
+
+        const currentHourIdx = new Date().getHours();
+        let hourlyForecast = [];
+        for (let i = 1; i <= 6; i++) {
+          let idx = currentHourIdx + i;
+          if (idx < json.hourly?.time?.length) {
+            hourlyForecast.push({
+              time: json.hourly.time[idx].split("T")[1],
+              temp: Math.round(json.hourly.temperature_2m[idx]),
+              code: json.hourly.weather_code[idx],
+              precip: json.hourly.precipitation[idx]
+            });
+          }
+        }
+
+        let daysForecast = [];
+        for (let i = 0; i < 5; i++) {
+          const dateObj = new Date(json.daily.time[i] + "T12:00:00");
+          const dayName = i === 0 ? "HOJE" : ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"][dateObj.getDay()];
+          daysForecast.push({
+            dayName: dayName,
+            code: json.daily.weather_code[i],
+            min: Math.round(json.daily.temperature_2m_min[i]),
+            max: Math.round(json.daily.temperature_2m_max[i]),
+            rain: json.daily.precipitation_sum[i]
+          });
+        }
+
+        return {
+          id: base.id,
+          name: base.name,
+          lat: base.lat,
+          lon: base.lon,
+          current: {
+            temp: Math.round(temp),
+            feels: Math.round(json.current.apparent_temperature),
+            isDay: json.current.is_day,
+            code: json.current.weather_code,
+            visibility: json.current.visibility || 10000,
+            pressure: Math.round(json.current.pressure_msl),
+            windSpd: Math.round(json.current.wind_speed_10m),
+            windDir: json.current.wind_direction_10m,
+            gusts: Math.round(json.current.wind_gusts_10m || json.current.wind_speed_10m),
+            humidity: rh,
+            clouds: json.current.cloud_cover || 0,
+            dewPoint: dewPoint
+          },
+          daily: {
+            max: Math.round(json.daily.temperature_2m_max[0]),
+            min: Math.round(json.daily.temperature_2m_min[0]),
+            uv: Math.round(json.daily.uv_index_max[0]),
+            sunrise: formatTime(json.daily.sunrise[0]),
+            sunset: formatTime(json.daily.sunset[0])
+          },
+          hourly: hourlyForecast,
+          forecast: daysForecast
+        };
+      } catch (error) {
+        console.error(`Erro ao carregar dados para ${base.name}:`, error);
+        return null;
+      }
+    };
+
+    const loadAll = async () => {
+      const promises = BASES.map(base => fetchWeatherForBase(base));
+      const results = (await Promise.all(promises)).filter(r => r !== null); // Remove bases que falharam
+
+      if (results.length > 0) {
+        setStationsData(results);
+        setHasError(false);
+
+        // Se a base ativa principal sumir por erro, joga para a primeira que carregou
+        if (!results.find(r => r.id === activeStationId)) {
+          setActiveStationId(results[0].id);
+        }
+
+        const maxGust = Math.max(...results.map(r => r.current.gusts));
+        const minVis = Math.min(...results.map(r => r.current.visibility));
+
+        if (minVis <= 3000 || maxGust >= 60) {
+          setGlobalThreat({ level: 'RED', text: 'ALERTA: VOO SUSPENSO NA REGIÃO. VISIBILIDADE CRÍTICA OU VENTOS FORTES.' });
+        } else if (minVis <= 5000 || maxGust >= 40) {
+          setGlobalThreat({ level: 'YELLOW', text: 'ATENÇÃO: CONDIÇÕES MARGINAIS DETECTADAS PARA EVAM. AVALIAR RISCOS.' });
+        } else {
+          setGlobalThreat({ level: 'GREEN', text: 'CONDIÇÕES GERAIS FAVORÁVEIS. OPERAÇÕES TERRESTRES E AÉREAS LIBERADAS.' });
+        }
+      } else {
+        setHasError(true);
+      }
+    };
+
+    loadAll();
+    const interval = setInterval(loadAll, 1000 * 60 * 15);
+    return () => clearInterval(interval);
+  }, []);
+
+  // TELA DE CARREGAMENTO / ERRO 
   if (stationsData.length === 0) {
     return (
       <div className="min-h-screen bg-[#020617] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Activity size={40} className="text-cyan-400 animate-pulse" />
-          <h1 className="text-cyan-400 font-mono tracking-widest animate-pulse">SISTEMA SDSOP CARREGANDO DADOS...</h1>
-        </div>
+        {hasError ? (
+          <div className="flex flex-col items-center gap-4">
+            <ServerCrash size={50} className="text-rose-500" />
+            <h1 className="text-rose-400 font-mono tracking-widest text-center">FALHA DE CONEXÃO COM SATÉLITES.<br/>VERIFIQUE A REDE E RECARREGUE A PÁGINA.</h1>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-4">
+            <Activity size={40} className="text-cyan-400 animate-pulse" />
+            <h1 className="text-cyan-400 font-mono tracking-widest animate-pulse">SISTEMA SDSOP CARREGANDO DADOS...</h1>
+          </div>
+        )}
       </div>
     );
   }
 
-  const activeData = stationsData.find(s => s.id === activeStationId);
+  const activeData = stationsData.find(s => s.id === activeStationId) || stationsData[0];
   const activeFlightData = getFlightCategory(activeData.current.visibility, activeData.current.gusts);
-  const activeFrameData = radarFrames[activeFrameIndex];
   
   const statusColors = {
     RED: "bg-rose-500/10 border-rose-500/40 text-rose-400",
@@ -208,7 +320,6 @@ export default function App() {
     <div className="min-h-screen bg-[#020617] p-3 md:p-5 text-slate-200 font-sans flex flex-col gap-4 overflow-hidden"
          style={{ background: 'radial-gradient(circle at top right, #0f172a, #020617)' }}>
       
-      {/* Scrollbar Customizada para a barra lateral do painel */}
       <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
@@ -261,13 +372,12 @@ export default function App() {
       {/* ÁREA PRINCIPAL (PAINEL ESQUERDO + MAPA DIREITO) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1 h-[700px] overflow-hidden">
         
-        {/* COLUNA ESQUERDA: DADOS DA CIDADE SELECIONADA (COM SCROLL) */}
+        {/* COLUNA ESQUERDA: DADOS DA CIDADE SELECIONADA */}
         <div className="lg:col-span-5 flex flex-col gap-4 overflow-y-auto custom-scrollbar pr-2 h-full pb-10">
           
           <div className="bg-[#0b1120]/80 backdrop-blur-2xl rounded-2xl p-5 border border-cyan-900/50 shadow-[0_0_20px_rgba(8,145,178,0.1)] relative">
             <div className={`absolute top-0 right-0 w-32 h-32 blur-[70px] rounded-full opacity-20 pointer-events-none ${activeFlightData.rule === 'VOO RESTRITO' ? 'bg-rose-500' : activeFlightData.rule === 'ATENÇÃO' ? 'bg-amber-500' : 'bg-cyan-500'}`}></div>
 
-            {/* Cabeçalho do Alvo */}
             <div className="flex justify-between items-start border-b border-slate-700/50 pb-3 mb-4">
               <div>
                 <div className="flex items-center gap-1 text-[10px] text-cyan-500 font-bold tracking-widest mb-1">
@@ -287,7 +397,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* Temperatura Principal */}
             <div className="flex items-center gap-4 pb-4 border-b border-slate-800/50 mb-4">
               <div className="transform scale-[2] drop-shadow-md ml-2">
                 {getWeatherIcon(activeData.current.code, activeData.current.isDay)}
@@ -298,7 +407,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* GRID 1: Aviação / Condições Críticas */}
             <h3 className="text-xs font-bold text-slate-500 mb-2 uppercase">Condições de Voo & Visibilidade</h3>
             <div className="grid grid-cols-2 gap-2 mb-4">
               <div className="bg-slate-900/80 p-3 rounded-lg border border-slate-700/50 flex justify-between items-center">
@@ -319,7 +427,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* GRID 2: Defesa Civil / Saúde (MAIS DADOS ADICIONADOS) */}
             <h3 className="text-xs font-bold text-slate-500 mb-2 uppercase">Dados de Saúde e Solo</h3>
             <div className="grid grid-cols-2 gap-2 mb-4">
               <div className="bg-slate-900/80 p-3 rounded-lg border border-slate-700/50 flex justify-between items-center">
@@ -340,7 +447,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* PREVISÃO DE 6 HORAS (CHUVA) */}
             <div className="mt-4 p-4 border border-slate-700/50 bg-slate-900/40 rounded-xl">
               <div className="text-[10px] text-cyan-400 font-bold tracking-widest mb-3">RISCO DE CHUVA - PRÓXIMAS 6 HORAS</div>
               <div className="flex justify-between items-end gap-2">
@@ -357,7 +463,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* PREVISÃO DE 5 DIAS (DEFESA CIVIL) */}
             <div className="mt-4 p-4 border border-slate-700/50 bg-slate-900/40 rounded-xl">
               <div className="text-[10px] text-amber-400 font-bold tracking-widest mb-3 flex items-center gap-2"><ShieldAlert size={14}/> DEFESA CIVIL - PRÓXIMOS 5 DIAS</div>
               <div className="grid grid-cols-5 gap-2">
@@ -377,63 +482,10 @@ export default function App() {
           </div>
         </div>
 
-        {/* COLUNA DIREITA: MAPA COM CONTROLE DE ZOOM MANUAL */}
-        <div className="lg:col-span-7 relative rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] border border-slate-700 p-1.5 bg-slate-900/30 backdrop-blur-sm h-full">
-          
-          <div className="absolute top-4 left-4 z-[400] bg-[#020617]/90 p-3 rounded-xl border border-slate-700/50 shadow-2xl pointer-events-none backdrop-blur-md">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="bg-rose-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded animate-pulse">RADAR</span>
-              <span className="text-slate-200 text-xs font-bold tracking-widest uppercase">Meteorológico Regional</span>
-            </div>
-            <div className="text-xl font-black tracking-widest border-t border-slate-800 pt-1 leading-none text-cyan-400">
-              {activeFrameData ? new Date(activeFrameData.time * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : "--:--"}
-            </div>
-            <div className={`text-[9px] font-bold mt-1.5 ${activeFrameData?.type === 'NOWCAST' ? 'text-amber-500' : 'text-cyan-500'}`}>
-              {activeFrameData?.type === 'NOWCAST' ? "PROJEÇÃO (NOWCAST 30MIN)" : "TEMPO REAL (PASSADO)"}
-            </div>
-          </div>
+        {/* COLUNA DIREITA: MAPA TÁTICO ISOLADO */}
+        <RadarMap activeData={activeData} stationsData={stationsData} />
 
-          <div className="h-full w-full rounded-xl overflow-hidden bg-[#020617]">
-            <MapContainer 
-              center={[activeData.lat, activeData.lon]} 
-              zoom={10} 
-              maxZoom={12} 
-              minZoom={5}
-              zoomControl={true} // BOTÕES DE ZOOM ATIVADOS (+) e (-)
-              scrollWheelZoom={true} // Permite dar zoom pelo mouse/touchpad
-              style={{ height: '100%', width: '100%' }}
-            >
-              <MapResizer />
-              <MapAutoTracker center={[activeData.lat, activeData.lon]} />
-
-              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" className="dark-base-map" maxZoom={19} />
-              
-              {radarHost && radarFrames.map((frame, idx) => (
-                <TileLayer
-                  key={`${frame.path}-${idx}`}
-                  url={`${radarHost}${frame.path}/256/{z}/{x}/{y}/6/1_1.png`}
-                  opacity={idx === activeFrameIndex ? 0.85 : 0}
-                  maxNativeZoom={6} maxZoom={12} zIndex={10 + idx}
-                />
-              ))}
-
-              {stationsData.map((base) => {
-                const isTarget = base.id === activeStationId;
-                return (
-                  <React.Fragment key={base.id}>
-                    {/* Desenha um anel em volta de todas as cidades, mas destaca a cidade clicada */}
-                    <Circle center={[base.lat, base.lon]} radius={isTarget ? 20000 : 10000} color={isTarget ? '#22d3ee' : '#64748b'} weight={isTarget ? 2 : 1} fill={false} opacity={0.5} dashArray={isTarget ? "none" : "3, 6"} />
-                    <CircleMarker center={[base.lat, base.lon]} radius={isTarget ? 6 : 4} color="#000" weight={2} fillColor={isTarget ? '#22d3ee' : '#94a3b8'} fillOpacity={1} zIndexOffset={isTarget ? 200 : 100}>
-                      <Tooltip direction="top" offset={[0, -10]} opacity={1} permanent={isTarget}>{base.id}</Tooltip>
-                    </CircleMarker>
-                  </React.Fragment>
-                );
-              })}
-            </MapContainer>
-          </div>
-        </div>
       </div>
-      
     </div>
   );
 }
