@@ -191,15 +191,28 @@ export default function App() {
   return (
     <div className="min-h-screen p-4 md:p-8 max-w-6xl mx-auto flex flex-col gap-8">
       
-      {/* 
-        O "ESCUDO" DO MAPA:
-        Esta tag style injeta o CSS direto na página. Ela impede que o Tailwind 
-        esprema e quebre as imagens 256x256 do mapa quando você dá zoom. 
-      */}
+      {/* Reset essencial para imagens do Leaflet e controle de fundo */}
       <style>{`
+        .leaflet-container {
+          background-color: #1a1a1a !important; /* Fundo escuro real para o mapa */
+        }
         .leaflet-container img {
           max-width: none !important;
           max-height: none !important;
+        }
+        /* Faz o Tooltip ficar elegante e sem fundo branco feio */
+        .leaflet-tooltip {
+          background: rgba(0, 0, 0, 0.7) !important;
+          border: 1px solid rgba(255,255,255,0.2) !important;
+          color: white !important;
+          font-weight: bold;
+          box-shadow: none !important;
+        }
+        .leaflet-tooltip-right::before {
+          border-right-color: rgba(0, 0, 0, 0.7) !important;
+        }
+        .leaflet-tooltip-left::before {
+          border-left-color: rgba(0, 0, 0, 0.7) !important;
         }
       `}</style>
 
@@ -215,10 +228,11 @@ export default function App() {
 
       <div className="bg-white/10 backdrop-blur-md rounded-2xl p-1 shadow-2xl border border-white/10 overflow-hidden relative mt-4">
         
+        {/* CAIXA DE TELEMETRIA */}
         <div className="absolute top-4 left-4 z-[400] bg-black/80 p-3 rounded-lg border border-white/10 shadow-lg pointer-events-none">
           <div className="flex items-center gap-2 mb-1">
             <span className="bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded">LIVE</span>
-            <span className="text-white text-xs font-bold tracking-widest">RADAR TÁTICO NEXRAD</span>
+            <span className="text-white text-xs font-bold tracking-widest">RADAR ESRI NEXRAD</span>
           </div>
           <div className="text-[#30D158] text-[10px] font-mono mt-2">OP: HACO CTR</div>
           <div className="text-[#30D158] text-[10px] font-mono">RNG: 300KM MAX</div>
@@ -227,32 +241,38 @@ export default function App() {
           </div>
         </div>
 
-        {/* 
-          LIMITES DE ZOOM IMPLEMENTADOS: 
-          - maxZoom={10}: Impede de dar zoom onde a nuvem não existe mais, evitando o "buraco".
-          - minZoom={5}: Impede de tirar tanto zoom a ponto de ver o planeta inteiro repetido.
-        */}
-        <div className="h-[500px] w-full rounded-xl overflow-hidden bg-[#0a0a0a]">
+        {/* MAPA INTERATIVO CORRIGIDO */}
+        <div className="h-[550px] w-full rounded-xl overflow-hidden bg-[#1a1a1a]">
           <MapContainer 
             center={[-30.627, -52.646]} 
             zoom={6} 
-            maxZoom={10} 
-            minZoom={5}
-            style={{ height: '100%', width: '100%', background: '#0a0a0a' }}
+            maxZoom={12} 
+            minZoom={4}
+            style={{ height: '100%', width: '100%' }}
             zoomControl={true}
           >
+            {/* O NOVO MAPA BASE: ESRI World Dark Gray */}
             <TileLayer
-              url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-              attribution='&copy; CartoDB'
+              url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+              attribution='&copy; ESRI'
             />
             
+            {/* 
+              A MÁGICA: maxNativeZoom={8}. 
+              Se você der zoom até o nível 12, o Leaflet não vai mais pedir 
+              imagens pro RainViewer (que causava o quadrado cinza). 
+              Ele vai pegar a imagem do zoom 8 e só dar um zoom nela! 
+            */}
             {radar.path && (
               <TileLayer
                 url={`${radar.host}${radar.path}/256/{z}/{x}/{y}/6/1_1.png`}
                 opacity={0.7}
+                maxNativeZoom={8}
+                maxZoom={12}
               />
             )}
 
+            {/* HUD TÁTICO */}
             <Polyline positions={[[-25.0, -51.18], [-35.0, -51.18]]} color="#30D158" weight={1} opacity={0.4} />
             <Polyline positions={[[-29.92, -58.0], [-29.92, -45.0]]} color="#30D158" weight={1} opacity={0.4} />
 
@@ -261,13 +281,13 @@ export default function App() {
             <Circle center={hacoCoords} radius={300000} color="#30D158" weight={1} fill={false} dashArray="4, 4" opacity={0.6} />
 
             <CircleMarker center={hacoCoords} radius={6} color="#000" weight={2} fillColor="#30D158" fillOpacity={1}>
-              <Tooltip direction="right" offset={[10, 0]} opacity={1} permanent className="font-bold bg-black/60 text-white border-0 shadow-none text-xs rounded">
+              <Tooltip direction="right" offset={[10, 0]} opacity={1} permanent>
                 CANOAS (HACO)
               </Tooltip>
             </CircleMarker>
 
             <CircleMarker center={bageCoords} radius={6} color="#000" weight={2} fillColor="#FFD60A" fillOpacity={1}>
-              <Tooltip direction="left" offset={[-10, 0]} opacity={1} permanent className="font-bold bg-black/60 text-white border-0 shadow-none text-xs rounded">
+              <Tooltip direction="left" offset={[-10, 0]} opacity={1} permanent>
                 BAGÉ
               </Tooltip>
             </CircleMarker>
