@@ -437,39 +437,51 @@ export default function App() {
       } catch (error) { console.error("Erro ao buscar radar", error); }
     };
 
-   // FETCH: RIOS DA ANA VIA MULTI-PROXY (REDUNDÂNCIA TÁTICA)
+  // FETCH: RIOS DA ANA VIA PROXY ARRAY (FORÇA BRUTA)
     const fetchRivers = async () => {
       const updatedRivers = await Promise.all(INITIAL_RIVERS.map(async (rio) => {
         try {
           const urlANA = `http://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosTempoReal?codEstacao=${rio.cod}`;
+          
+          // Arsenal de Proxies: Se um falhar, o sistema tenta o próximo instantaneamente
+          const proxies = [
+            `https://corsproxy.io/?${encodeURIComponent(urlANA)}`,
+            `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(urlANA)}`,
+            `https://api.allorigins.win/raw?url=${encodeURIComponent(urlANA)}`
+          ];
+
           let xmlText = null;
           
-          // TENTATIVA 1: Acesso RAW Direto
-          try {
-            const res1 = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(urlANA)}`, { cache: "no-store" });
-            if (res1.ok) xmlText = await res1.text();
-            else throw new Error("Falha RAW");
-          } catch (e1) {
-            // TENTATIVA 2: Acesso Encapsulado em JSON (Bypass de Segurança)
+          for (let proxy of proxies) {
             try {
-              const res2 = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(urlANA)}`);
-              if (res2.ok) {
-                const data = await res2.json();
-                xmlText = data.contents;
-              } else throw new Error("Falha GET JSON");
-            } catch (e2) {
-              throw new Error("Bloqueio total de Proxy");
+              // AbortSignal para não travar o painel se a ANA demorar mais de 6 segundos
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 6000);
+              
+              const res = await fetch(proxy, { signal: controller.signal, cache: "no-store" });
+              clearTimeout(timeoutId);
+
+              if (res.ok) {
+                const text = await res.text();
+                // Verifica se o texto retornado é realmente o XML da ANA e não uma página de erro do proxy
+                if (text && text.includes('<Nivel>')) {
+                  xmlText = text;
+                  break; // Sucesso! Sai do loop de tentativas
+                }
+              }
+            } catch (e) {
+              // Falhou neste proxy (CORS, Timeout, etc). O loop segue em silêncio para o próximo.
             }
           }
 
-          if (!xmlText || !xmlText.includes('<Nivel>')) throw new Error("Sem dados na estação");
+          if (!xmlText) throw new Error("Bloqueio total nos 3 proxies ou ANA fora do ar.");
 
+          // Lendo o XML oficial
           const parser = new DOMParser();
           const xml = parser.parseFromString(xmlText, "text/xml");
           const niveis = xml.getElementsByTagName("Nivel");
           
           let nivelAtual = null;
-          // Pega o primeiro valor numérico válido (Evita tags vazias que a ANA costuma mandar)
           for (let i = 0; i < niveis.length; i++) {
             const val = niveis[i].textContent;
             if (val && !isNaN(val) && val.trim() !== "") {
@@ -485,7 +497,7 @@ export default function App() {
           }
           
         } catch (e) {
-          console.warn(`Alerta de Conexão (Rio ${rio.name}): Usando Contingência.`);
+          console.warn(`Defesa Ativada (Rio ${rio.name}): Usando Contingência. Erro: ${e.message}`);
           return { ...rio, level: rio.backupLevel, isBackup: true };
         }
       }));
