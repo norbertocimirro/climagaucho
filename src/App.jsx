@@ -17,7 +17,7 @@ const BASES = [
   { id: 'SBBG', name: 'BAGÉ', lat: -31.33, lon: -54.11 }
 ];
 
-// URLs agora apontam para o nosso Túnel Privado da Vercel
+// URLs apontam para o nosso Túnel Privado da Vercel
 const INITIAL_RIVERS = [
   { id: 'taquari', name: 'Rio Taquari (Eldorado)', cod: '86695000', proxyUrl: '/api/taquari', level: null, alert: 15.00, flood: 19.00, lat: -29.50, lon: -51.96 },
   { id: 'guaiba', name: 'Guaíba (Cais Mauá)', cod: '87450004', proxyUrl: '/api/guaiba', level: null, alert: 2.50, flood: 3.00, lat: -30.03, lon: -51.23 },
@@ -82,7 +82,7 @@ const HydrologyTerminal = ({ rivers }) => {
       <div className="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
         <div>
           <div className="flex items-center gap-1 text-[10px] text-blue-400 font-bold tracking-widest mb-1">
-            <Waves size={10} /> TELEMETRIA NATIVA (VERCEL EDGE)
+            <Waves size={10} /> TELEMETRIA: WEB E GOVERNO
           </div>
           <h2 className="text-xl lg:text-2xl font-black text-white">BACIAS HIDROGRÁFICAS</h2>
         </div>
@@ -104,7 +104,7 @@ const HydrologyTerminal = ({ rivers }) => {
                 <div>
                   <span className="font-bold text-slate-200 block">{river.name}</span>
                   <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded mt-1 inline-block ${typeof river.level === 'number' ? (river.isBackup ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30') : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'}`}>
-                    {typeof river.level === 'number' ? (river.isBackup ? 'FONTE ALTERNATIVA (WEB)' : 'FONTE OFICIAL (SACE/ANA)') : 'SINAL PERDIDO'}
+                    {typeof river.level === 'number' ? (river.isBackup ? 'FONTE: SITES COMUNITÁRIOS' : 'FONTE: SACE/ANA') : 'SINAL PERDIDO'}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -262,10 +262,6 @@ const StationTerminal = ({ data }) => {
             <span className="text-[10px] lg:text-xs text-slate-400 font-medium">Sensação: {data.current.feels}°C</span>
           </div>
         </div>
-        <div className="hidden sm:flex flex-col gap-1 text-[10px] font-medium text-slate-400 bg-slate-900/50 p-2 rounded-lg border border-slate-800">
-          <span className="flex items-center gap-1"><Sunrise size={12} className="text-amber-400"/> Nascer: {data.daily.sunrise}</span>
-          <span className="flex items-center gap-1"><Sunset size={12} className="text-orange-500"/> Pôr: {data.daily.sunset}</span>
-        </div>
       </div>
 
       <h3 className="text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-wider">Aviação & Atmosfera</h3>
@@ -387,30 +383,68 @@ export default function App() {
       } catch (error) {}
     };
 
-    // A MÁGICA FINAL: NÚCLEO NATIVO DE TÚNEL VERCEL
+    // NÚCLEO DE EXTRAÇÃO: PRIORIDADE 1 PARA WEB (SEMA/PRATICAGEM) E PRIORIDADE 2 PARA GOVERNO
     const fetchRivers = async () => {
       const updatedRivers = await Promise.all(INITIAL_RIVERS.map(async (rio) => {
         let nivelAtual = null;
-        let isBackup = false;
+        let isBackup = true; // True = Veio do site, False = Veio do Governo
 
-        // TÁTICA 1: TÚNEL VERCEL DIRETO PRO CPRM (SACE)
-        try {
-          const res = await fetch(`/api/sace/${rio.cod}`, { cache: "no-store" });
-          if (res.ok) {
-            const data = await res.json();
-            if (Array.isArray(data) && data.length > 0) {
-              for (let i = data.length - 1; i >= 0; i--) {
-                if (data[i].nivel) {
-                  nivelAtual = (data[i].nivel / 100).toFixed(2);
-                  isBackup = false; 
-                  break;
+        // TÁTICA 1: RASPAGEM WEB (PRIORIDADE MÁXIMA PARA PEGAR O REFERENCIAL DA SEMA - EX: 0.57m)
+        if (rio.proxyUrl) {
+          try {
+            // Acessa o site comunitário pelo proxy da Vercel
+            const res = await fetch(rio.proxyUrl, { cache: "no-store" });
+            if (res.ok) {
+              const htmlText = await res.text();
+              const doc = new DOMParser().parseFromString(htmlText, "text/html");
+              const textoBase = (doc.title + " " + doc.body.innerText).replace(/\s+/g, ' ');
+              
+              // Expressões restritas focadas em pegar a atualização da água
+              const regexList = [
+                /(?:atual|hoje|agora|cota)[\s\S]{0,20}?([0-9]{1,2}[.,][0-9]{1,2})\s*[cm]?m/gi,
+                /([0-9]{1,2}[.,][0-9]{1,2})\s*metros/gi,
+                /([0-9]{1,2}[.,][0-9]{1,2})\s*m\b/gi
+              ];
+
+              for (const rx of regexList) {
+                const matches = [...textoBase.matchAll(rx)];
+                for (const m of matches) {
+                  if (m[1]) {
+                    const num = parseFloat(m[1].replace(',', '.'));
+                    // FILTRO DE EXCLUSÃO: Impede a leitura de dados falsos (Alertas fixos ou números absurdos)
+                    if (num > 0.00 && num < 20 && num !== rio.alert && num !== rio.flood) {
+                      nivelAtual = num.toFixed(2);
+                      isBackup = true; // Confirma que é a leitura secundária (comunitária)
+                      break;
+                    }
+                  }
+                }
+                if (nivelAtual !== null) break;
+              }
+            }
+          } catch(e) {}
+        }
+
+        // TÁTICA 2: SACE/CPRM (SE O SITE CAIR, PUXA O DADO DO GOVERNO FEDERAL)
+        if (nivelAtual === null) {
+          try {
+            const res = await fetch(`/api/sace/${rio.cod}`, { cache: "no-store" });
+            if (res.ok) {
+              const data = await res.json();
+              if (Array.isArray(data) && data.length > 0) {
+                for (let i = data.length - 1; i >= 0; i--) {
+                  if (data[i].nivel) {
+                    nivelAtual = (data[i].nivel / 100).toFixed(2);
+                    isBackup = false; // Confirma que o dado é do CPRM (provavelmente com a cota antiga/2.43m)
+                    break;
+                  }
                 }
               }
             }
-          }
-        } catch (e) { }
+          } catch (e) { }
+        }
 
-        // TÁTICA 2: TÚNEL VERCEL DIRETO PRA ANA (GOVERNO)
+        // TÁTICA 3: ANA GOVERNO (ÚLTIMO RECURSO DA DEFESA CIVIL)
         if (nivelAtual === null) {
           try {
             const res = await fetch(`/api/ana/${rio.cod}`, { cache: "no-store" });
@@ -429,40 +463,6 @@ export default function App() {
               }
             }
           } catch(e) { }
-        }
-
-        // TÁTICA 3: TÚNEL VERCEL PARA SITES COMUNITÁRIOS COM BLINDAGEM DE EXCLUSÃO
-        if (nivelAtual === null && rio.proxyUrl) {
-          try {
-            const res = await fetch(rio.proxyUrl, { cache: "no-store" });
-            if (res.ok) {
-              const htmlText = await res.text();
-              const doc = new DOMParser().parseFromString(htmlText, "text/html");
-              const textoBase = (doc.title + " " + doc.body.innerText).replace(/\s+/g, ' ');
-              
-              const regexList = [
-                /(?:nível|cota|atual|hoje)[\s\S]{0,20}?([0-9]{1,2}[.,][0-9]{1,2})/gi,
-                /([0-9]{1,2}[.,][0-9]{1,2})\s*metros/gi,
-                /([0-9]{1,2}[.,][0-9]{1,2})\s*m\b/gi
-              ];
-
-              for (const rx of regexList) {
-                const matches = [...textoBase.matchAll(rx)];
-                for (const m of matches) {
-                  if (m[1]) {
-                    const num = parseFloat(m[1].replace(',', '.'));
-                    // FILTRO MILITAR: Garante que é nível de rio e ignora os limites fixos de texto do site
-                    if (num > 0.01 && num < 25 && num !== rio.alert && num !== rio.flood) {
-                      nivelAtual = num.toFixed(2);
-                      isBackup = true;
-                      break;
-                    }
-                  }
-                }
-                if (nivelAtual !== null) break;
-              }
-            }
-          } catch(e) {}
         }
 
         // RETORNO FINAL
