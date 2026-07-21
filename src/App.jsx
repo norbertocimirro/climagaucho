@@ -17,9 +17,9 @@ const BASES = [
   { id: 'SBBG', name: 'BAGÉ', lat: -31.33, lon: -54.11 }
 ];
 
-// URLs Táticas Independentes integradas
+// URLs Táticas Independentes integradas ao sistema
 const INITIAL_RIVERS = [
-  { id: 'taquari', name: 'Rio Taquari (Estrela)', cod: '86695000', siteUrl: 'https://defesacivil.eldorado.rs.gov.br/monitoramento.php', level: null, alert: 15.00, flood: 19.00, lat: -29.50, lon: -51.96 },
+  { id: 'taquari', name: 'Rio Taquari (Estrela/Eldorado)', cod: '86695000', siteUrl: 'https://defesacivil.eldorado.rs.gov.br/monitoramento.php', level: null, alert: 15.00, flood: 19.00, lat: -29.50, lon: -51.96 },
   { id: 'guaiba', name: 'Guaíba (Cais Mauá)', cod: '87450004', siteUrl: 'https://nivelguaiba.com.br/', level: null, alert: 2.50, flood: 3.00, lat: -30.03, lon: -51.23 },
   { id: 'cai', name: 'Rio Caí (S. S. do Caí)', cod: '87382000', siteUrl: 'https://nivelguaiba.com.br/sao-sebastiao-do-cai', level: null, alert: 7.00, flood: 10.00, lat: -29.58, lon: -51.37 },
   { id: 'sinos', name: 'Rio dos Sinos (S. Leopoldo)', cod: '87398000', siteUrl: 'https://nivelguaiba.com.br/sao-leopoldo', level: null, alert: 4.30, flood: 4.50, lat: -29.76, lon: -51.14 },
@@ -51,9 +51,6 @@ const getWindDirection = (degree) => {
   return directions[Math.round(degree / 45) % 8];
 };
 
-// ==========================================
-// 3. CONTROLES DO MAPA LEAFLET
-// ==========================================
 const MapResizer = () => {
   const map = useMap();
   useEffect(() => { const t = setTimeout(() => { map.invalidateSize(); }, 400); return () => clearTimeout(t); }, [map]);
@@ -70,7 +67,7 @@ const MapAutoTracker = ({ center, zoom }) => {
 };
 
 // ==========================================
-// 4. COMPONENTE: BACIAS HIDROGRÁFICAS (BLINDADO)
+// 3. COMPONENTE: BACIAS HIDROGRÁFICAS
 // ==========================================
 const HydrologyTerminal = ({ rivers }) => {
   const getRiverStatus = (river) => {
@@ -147,7 +144,7 @@ const HydrologyTerminal = ({ rivers }) => {
 };
 
 // ==========================================
-// 5. COMPONENTE: VISÃO GERAL ESTADUAL
+// 4. COMPONENTE: VISÃO GERAL ESTADUAL
 // ==========================================
 const GeneralOverview = ({ stations, rivers }) => {
   const enchenteRisks = stations.filter(s => s.forecast && s.forecast[0] && s.forecast[0].rain > 30);
@@ -172,7 +169,6 @@ const GeneralOverview = ({ stations, rivers }) => {
         </div>
       ) : (
         <div className="space-y-4">
-          
           {riosEmRisco.length > 0 && (
             <div className="bg-rose-900/20 border border-rose-500/50 p-4 rounded-xl shadow-[0_0_15px_rgba(244,63,94,0.1)]">
               <h3 className="text-rose-500 font-black flex items-center gap-2 mb-3 text-sm tracking-widest"><Waves size={16}/> RISCO DE ENCHENTE / INUNDAÇÃO</h3>
@@ -202,34 +198,6 @@ const GeneralOverview = ({ stations, rivers }) => {
               </div>
             </div>
           )}
-
-          {vendavalRisks.length > 0 && (
-            <div className="bg-amber-900/20 border border-amber-500/30 p-4 rounded-xl">
-              <h3 className="text-amber-500 font-bold flex items-center gap-2 mb-2 text-sm"><Wind size={16}/> ALERTA DE VENDAVAL</h3>
-              <div className="grid gap-2">
-                {vendavalRisks.map(s => (
-                  <div key={s.id} className="flex justify-between items-center text-xs bg-slate-900/50 p-2 rounded">
-                    <span className="text-slate-300 font-bold">{s.name}</span>
-                    <span className="text-amber-400 font-black">{s.current.gusts} km/h</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {nevoeiroRisks.length > 0 && (
-            <div className="bg-slate-800/50 border border-slate-600 p-4 rounded-xl">
-              <h3 className="text-slate-300 font-bold flex items-center gap-2 mb-2 text-sm"><Eye size={16}/> TETO BAIXO / NEVOEIRO</h3>
-              <div className="grid gap-2">
-                {nevoeiroRisks.map(s => (
-                  <div key={s.id} className="flex justify-between items-center text-xs bg-slate-900/50 p-2 rounded">
-                    <span className="text-slate-300 font-bold">{s.name}</span>
-                    <span className="text-white font-black">Visib. {s.current.visibility}m</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       )}
     </div>
@@ -237,7 +205,7 @@ const GeneralOverview = ({ stations, rivers }) => {
 };
 
 // ==========================================
-// 6. COMPONENTE: TERMINAL DO AEROPORTO
+// 5. COMPONENTE: TERMINAL DO AEROPORTO
 // ==========================================
 const StationTerminal = ({ data }) => {
   if (!data || !data.current) return <div className="bg-slate-900/50 rounded-2xl animate-pulse h-full"></div>;
@@ -266,17 +234,13 @@ const StationTerminal = ({ data }) => {
             <span className="text-[10px] lg:text-xs text-slate-400 font-medium">Sensação: {data.current.feels}°C</span>
           </div>
         </div>
-        <div className="hidden sm:flex flex-col gap-1 text-[10px] font-medium text-slate-400 bg-slate-900/50 p-2 rounded-lg border border-slate-800">
-          <span className="flex items-center gap-1"><Sunrise size={12} className="text-amber-400"/> Nascer: {data.daily.sunrise}</span>
-          <span className="flex items-center gap-1"><Sunset size={12} className="text-orange-500"/> Pôr: {data.daily.sunset}</span>
-        </div>
       </div>
 
       <h3 className="text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-wider">Aviação & Atmosfera</h3>
       <div className="grid grid-cols-2 gap-2 mb-4">
         <div className="bg-slate-900/80 p-2 lg:p-3 rounded-lg border border-slate-700/50">
           <div className="text-[9px] lg:text-[10px] text-slate-400 font-bold uppercase"><Compass size={12} className="inline mr-1"/>Vento</div>
-          <div className="text-xs lg:text-sm font-bold text-white mt-1">{data.current.windSpd} km/h <span className="text-slate-500 text-[10px] font-normal">({getWindDirection(data.current.windDir)})</span></div>
+          <div className="text-xs lg:text-sm font-bold text-white mt-1">{data.current.windSpd} km/h</div>
         </div>
         <div className="bg-slate-900/80 p-2 lg:p-3 rounded-lg border border-slate-700/50">
           <div className="text-[9px] lg:text-[10px] text-rose-400 font-bold uppercase"><Wind size={12} className="inline mr-1"/>Rajadas</div>
@@ -289,26 +253,6 @@ const StationTerminal = ({ data }) => {
         <div className="bg-slate-900/80 p-2 lg:p-3 rounded-lg border border-slate-700/50">
           <div className="text-[9px] lg:text-[10px] text-slate-400 font-bold uppercase"><Gauge size={12} className="inline mr-1"/>Pressão</div>
           <div className="text-xs lg:text-sm font-bold text-white mt-1">{data.current.pressure} hPa</div>
-        </div>
-      </div>
-
-      <h3 className="text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-wider">Solo & Saúde Operacional</h3>
-      <div className="grid grid-cols-2 gap-2 mb-4">
-        <div className="bg-slate-900/80 p-2 lg:p-3 rounded-lg border border-slate-700/50 flex justify-between items-center">
-          <div className="text-[9px] text-slate-400 font-bold uppercase"><Droplets size={12} className="inline mr-1"/>Umidade</div>
-          <div className="text-xs lg:text-sm font-bold text-blue-300">{data.current.humidity}%</div>
-        </div>
-        <div className="bg-slate-900/80 p-2 lg:p-3 rounded-lg border border-slate-700/50 flex justify-between items-center">
-          <div className="text-[9px] text-slate-400 font-bold uppercase"><Thermometer size={12} className="inline mr-1"/>Pto. Orvalho</div>
-          <div className="text-xs lg:text-sm font-bold text-blue-300">{data.current.dewPoint}°C</div>
-        </div>
-        <div className="bg-slate-900/80 p-2 lg:p-3 rounded-lg border border-slate-700/50 flex justify-between items-center">
-          <div className="text-[9px] text-slate-400 font-bold uppercase"><CloudCog size={12} className="inline mr-1"/>Nuvens</div>
-          <div className="text-xs lg:text-sm font-bold text-white">{data.current.clouds}%</div>
-        </div>
-        <div className="bg-slate-900/80 p-2 lg:p-3 rounded-lg border border-slate-700/50 flex justify-between items-center">
-          <div className="text-[9px] text-slate-400 font-bold uppercase"><Sun className="inline w-3 h-3 mr-1 text-yellow-400"/>UV Máx</div>
-          <div className="text-xs lg:text-sm font-bold text-yellow-400">{data.daily.uv}</div>
         </div>
       </div>
 
@@ -327,28 +271,12 @@ const StationTerminal = ({ data }) => {
           ))}
         </div>
       </div>
-
-      <div className="mt-4 p-3 lg:p-4 border border-slate-700/50 bg-slate-900/40 rounded-xl">
-        <div className="text-[10px] text-amber-400 font-bold tracking-widest mb-3 flex items-center gap-2"><ShieldAlert size={12}/> DEFESA CIVIL (5 DIAS)</div>
-        <div className="grid grid-cols-5 gap-1.5 lg:gap-2">
-          {data.forecast.map((day, idx) => (
-            <div key={idx} className="flex flex-col items-center gap-1 p-1.5 lg:p-2 bg-slate-900/80 rounded-lg border border-slate-800">
-              <span className={`text-[9px] font-black tracking-wider ${idx === 0 ? 'text-amber-400' : 'text-slate-300'}`}>{day.dayName}</span>
-              <div className="transform scale-50 -my-3">{getWeatherIcon(day.code, 1)}</div>
-              <span className="text-[9px] font-bold text-slate-400 mt-1">{day.min}°/{day.max}°</span>
-              <span className={`text-[9px] font-bold w-full text-center py-0.5 rounded ${day.rain > 15 ? 'bg-indigo-500/20 text-indigo-300' : 'bg-slate-800 text-slate-500'}`}>
-                {day.rain > 0 ? `${day.rain.toFixed(1)} mm` : '0 mm'}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 };
 
 // ==========================================
-// 7. MOTOR PRINCIPAL (APP C2)
+// 6. MOTOR PRINCIPAL (APP C2)
 // ==========================================
 export default function App() {
   const [stationsData, setStationsData] = useState([]);
@@ -371,12 +299,9 @@ export default function App() {
           const json = await res.json();
 
           const formatTime = (isoString) => new Date(isoString).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-          const temp = json.current.temperature_2m || 0;
-          const rh = json.current.relative_humidity_2m || 0;
-          const dewPoint = Math.round(temp - ((100 - rh) / 5));
-
-          const currentHourIdx = new Date().getHours();
+          
           let hourlyForecast = [];
+          const currentHourIdx = new Date().getHours();
           for (let i = 1; i <= 6; i++) {
             let idx = currentHourIdx + i;
             if (idx < json.hourly.time.length) {
@@ -405,14 +330,10 @@ export default function App() {
           return {
             id: base.id, name: base.name, lat: base.lat, lon: base.lon,
             current: {
-              temp: Math.round(temp), feels: Math.round(json.current.apparent_temperature), isDay: json.current.is_day,
+              temp: Math.round(json.current.temperature_2m || 0), feels: Math.round(json.current.apparent_temperature), isDay: json.current.is_day,
               code: json.current.weather_code, visibility: json.current.visibility || 10000, pressure: Math.round(json.current.pressure_msl),
               windSpd: Math.round(json.current.wind_speed_10m), windDir: json.current.wind_direction_10m,
-              gusts: Math.round(json.current.wind_gusts_10m || json.current.wind_speed_10m), humidity: rh, clouds: json.current.cloud_cover || 0, dewPoint: dewPoint
-            },
-            daily: {
-              max: Math.round(json.daily.temperature_2m_max[0]), min: Math.round(json.daily.temperature_2m_min[0]),
-              uv: Math.round(json.daily.uv_index_max[0]), sunrise: formatTime(json.daily.sunrise[0]), sunset: formatTime(json.daily.sunset[0])
+              gusts: Math.round(json.current.wind_gusts_10m || json.current.wind_speed_10m), humidity: json.current.relative_humidity_2m || 0
             },
             hourly: hourlyForecast, forecast: daysForecast
           };
@@ -430,7 +351,7 @@ export default function App() {
         } else {
           setGlobalThreat({ level: 'GREEN', text: 'CONDIÇÕES GERAIS FAVORÁVEIS. OPERAÇÕES LIBERADAS NO RS.' });
         }
-      } catch (error) { console.error("Erro ao buscar clima", error); }
+      } catch (error) { console.error("Erro clima"); }
     };
 
     // FETCH: RADAR METEOROLÓGICO
@@ -439,78 +360,97 @@ export default function App() {
         const res = await fetch("https://api.rainviewer.com/public/weather-maps.json");
         const data = await res.json();
         setRadarHost(data.host);
-        const pastFrames = data.radar.past.slice(-5).map(f => ({ ...f, type: 'PAST' }));
-        const nowcastFrames = data.radar.nowcast.slice(0, 3).map(f => ({ ...f, type: 'NOWCAST' }));
-        setRadarFrames([...pastFrames, ...nowcastFrames]);
-      } catch (error) { console.error("Erro ao buscar radar", error); }
+        setRadarFrames([...data.radar.past.slice(-5).map(f => ({ ...f, type: 'PAST' })), ...data.radar.nowcast.slice(0, 3).map(f => ({ ...f, type: 'NOWCAST' }))]);
+      } catch (error) { console.error("Erro radar"); }
     };
 
-    // FETCH: SISTEMA HÍBRIDO BLINDADO (ANA + SCRAPER DE TEXTO PURO)
+    // FETCH: O TRITURADOR DE HTML (MÁXIMA FORÇA BRUTA)
     const fetchRivers = async () => {
+      const proxies = [
+        (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+        (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+        (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`
+      ];
+
       const updatedRivers = await Promise.all(INITIAL_RIVERS.map(async (rio) => {
         let nivelAtual = null;
-        let isBackup = false; // False = ANA, True = Web Scraper
+        let isBackup = false; 
 
-        // TÁTICA 1: Tenta o servidor oficial da ANA
-        try {
-          const timestamp = new Date().getTime();
-          const urlANA = `http://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosTempoReal?codEstacao=${rio.cod}&_=${timestamp}`;
-          const resANA = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(urlANA)}`, { cache: "no-store" });
-          
-          if (resANA.ok) {
-            const xmlText = await resANA.text();
-            if (xmlText.includes('<Nivel>')) {
-              const parser = new DOMParser();
-              const xml = parser.parseFromString(xmlText, "text/xml");
-              const niveis = xml.getElementsByTagName("Nivel");
-              for (let i = 0; i < niveis.length; i++) {
-                const val = niveis[i].textContent;
-                if (val && !isNaN(val) && val.trim() !== "") {
-                  nivelAtual = (parseFloat(val) / 100).toFixed(2);
-                  break;
+        // 1. PRIORIDADE MÁXIMA: RASPAGEM DA WEB (SITES QUE VOCÊ MANDOU)
+        if (rio.siteUrl) {
+          for (const proxy of proxies) {
+            try {
+              const urlBuster = `${rio.siteUrl}${rio.siteUrl.includes('?') ? '&' : '?'}cb=${Date.now()}`;
+              const res = await fetch(proxy(urlBuster), { cache: "no-store" });
+              
+              if (res.ok) {
+                const html = await res.text();
+                // Destrói todo o código de formatação HTML do site e deixa só texto puro
+                const textoPuro = html.replace(/<[^>]*>?/gm, ' ');
+                
+                // Inteligência Regex: Caça palavras-chave e números com casas decimais
+                const regexList = [
+                  /(?:nível|cota|atual|marca)[\s\S]{0,30}?([0-9]{1,2}[.,][0-9]{2})/gi, // Ex: "Nível: 2,15"
+                  /([0-9]{1,2}[.,][0-9]{2})\s*m/gi,                                   // Ex: "2.15 m"
+                  /([0-9]{1,2}[.,][0-9]{2})/gi                                        // Caçador cego (último recurso)
+                ];
+
+                for (const rx of regexList) {
+                  const matches = [...textoPuro.matchAll(rx)];
+                  for (const m of matches) {
+                    const numeroStr = m[1];
+                    if (numeroStr) {
+                      const numero = parseFloat(numeroStr.replace(',', '.'));
+                      // Validação Militar (Rios no RS ficam entre 0 e 35m. Impede leitura de termômetros do site)
+                      if (numero > 0.1 && numero < 35) {
+                        nivelAtual = numero;
+                        isBackup = true; // Confirma que pegou da web alternativa
+                        break;
+                      }
+                    }
+                  }
+                  if (nivelAtual !== null) break; 
                 }
               }
+              if (nivelAtual !== null) break; // Sai do loop de proxies, missão cumprida
+            } catch (e) {
+              // Silêncio rádio, tenta o próximo proxy
             }
           }
-        } catch (e) { /* Falhou em silêncio, vai para Tática 2 */ }
-
-        // TÁTICA 2: Varredura Web de Alta Precisão (Scraper de Texto Puro)
-        if (!nivelAtual && rio.siteUrl) {
-          try {
-            const resWeb = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(rio.siteUrl)}`, { cache: "no-store" });
-            if (resWeb.ok) {
-              const jsonWeb = await resWeb.json();
-              
-              // Converte o HTML em um documento em memória e extrai APENAS o texto (ignora toda a estrutura do site que costuma quebrar)
-              const doc = new DOMParser().parseFromString(jsonWeb.contents, "text/html");
-              const textoLimpo = doc.body.innerText.replace(/\s+/g, ' ');
-              
-              // Regex Inteligente: Busca padrões comuns na Defesa Civil
-              // 1. Procura "2,15 m" ou "2.15m"
-              let match = textoLimpo.match(/([0-9]{1,2}[,.][0-9]{2})\s*m/i);
-              // 2. Se falhar, procura a palavra "atual" perto de um número
-              if (!match) match = textoLimpo.match(/atual[^\d]*([0-9]{1,2}[,.][0-9]{2})/i);
-              // 3. Último recurso: pega o primeiro número com duas casas decimais no texto
-              if (!match) match = textoLimpo.match(/([0-9]{1,2}[,.][0-9]{2})/);
-
-              if (match && match[1]) {
-                const numeroExtraido = parseFloat(match[1].replace(',', '.'));
-                
-                // Trava de segurança: Rios costumam ficar entre 0 e 35 metros (evita que o painel pegue a temperatura ou a data por acidente)
-                if (numeroExtraido > 0 && numeroExtraido < 35) {
-                  nivelAtual = numeroExtraido.toFixed(2);
-                  isBackup = true; // Confirma que o dado veio do site alternativo
-                }
-              }
-            }
-          } catch (e) { console.error(`Varredura web falhou para ${rio.name}`); }
         }
 
-        // RESULTADO SEGURO
+        // 2. SE OS SITES FOREM DERRUBADOS, TENTA A ANA (GOVERNO) DE NOVO
+        if (nivelAtual === null) {
+          const urlANA = `http://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosTempoReal?codEstacao=${rio.cod}`;
+          for (const proxy of proxies) {
+            try {
+              const res = await fetch(proxy(urlANA), { cache: "no-store" });
+              if (res.ok) {
+                const xmlText = await res.text();
+                if (xmlText.includes('<Nivel>')) {
+                  const parser = new DOMParser();
+                  const xml = parser.parseFromString(xmlText, "text/xml");
+                  const niveis = xml.getElementsByTagName("Nivel");
+                  for (let i = 0; i < niveis.length; i++) {
+                    const val = niveis[i].textContent;
+                    if (val && !isNaN(val) && val.trim() !== "") {
+                      nivelAtual = parseFloat(val) / 100;
+                      isBackup = false; // Dado oficial
+                      break;
+                    }
+                  }
+                }
+              }
+              if (nivelAtual !== null) break;
+            } catch (e) { }
+          }
+        }
+
+        // RETORNO BLINDADO
         if (nivelAtual !== null && !isNaN(nivelAtual)) {
           return { ...rio, level: parseFloat(nivelAtual), isBackup: isBackup };
         } else {
-          return { ...rio, level: null, isBackup: false }; // Envia Null para acionar a tela "SEM SINAL"
+          return { ...rio, level: null, isBackup: false }; // Envia Null para acionar a UI de "SEM SINAL"
         }
       }));
       
@@ -529,7 +469,6 @@ export default function App() {
     return () => clearInterval(loop);
   }, [radarFrames]);
 
-  // Loading Screen
   if (stationsData.length === 0 || riverData.length === 0) {
     return (
       <div className="min-h-screen bg-[#020617] flex items-center justify-center">
