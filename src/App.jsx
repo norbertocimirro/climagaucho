@@ -17,13 +17,13 @@ const BASES = [
   { id: 'SBBG', name: 'BAGÉ', lat: -31.33, lon: -54.11 }
 ];
 
-// URLs apontam para o nosso Túnel Privado da Vercel
+// URLs Táticas Mapeadas para extração de JSON da Praticagem/SEMA
 const INITIAL_RIVERS = [
-  { id: 'taquari', name: 'Rio Taquari (Eldorado)', cod: '86695000', proxyUrl: '/api/taquari', level: null, alert: 15.00, flood: 19.00, lat: -29.50, lon: -51.96 },
-  { id: 'guaiba', name: 'Guaíba (Cais Mauá)', cod: '87450004', proxyUrl: '/api/guaiba', level: null, alert: 2.50, flood: 3.00, lat: -30.03, lon: -51.23 },
-  { id: 'cai', name: 'Rio Caí (S. S. do Caí)', cod: '87382000', proxyUrl: '/api/cai', level: null, alert: 7.00, flood: 10.00, lat: -29.58, lon: -51.37 },
-  { id: 'sinos', name: 'Rio dos Sinos (S. Leopoldo)', cod: '87398000', proxyUrl: '/api/sinos', level: null, alert: 4.30, flood: 4.50, lat: -29.76, lon: -51.14 },
-  { id: 'uruguai', name: 'Rio Uruguai (Uruguaiana)', cod: '77150000', proxyUrl: '/api/uruguai', level: null, alert: 7.50, flood: 8.50, lat: -29.76, lon: -57.08 }
+  { id: 'taquari', name: 'Rio Taquari (Estrela/Eldorado)', cod: '86695000', domain: 'nivelguaiba.com.br', slug: 'estrela', level: null, alert: 15.00, flood: 19.00, lat: -29.50, lon: -51.96 },
+  { id: 'guaiba', name: 'Guaíba (Cais Mauá)', cod: '87450004', domain: 'nivelguaiba.com.br', slug: 'portoalegre', level: null, alert: 2.50, flood: 3.00, lat: -30.03, lon: -51.23 },
+  { id: 'cai', name: 'Rio Caí (S. S. do Caí)', cod: '87382000', domain: 'nivelguaiba.com.br', slug: 'saosebastiaodocai', level: null, alert: 7.00, flood: 10.00, lat: -29.58, lon: -51.37 },
+  { id: 'sinos', name: 'Rio dos Sinos (S. Leopoldo)', cod: '87398000', domain: 'nivelguaiba.com.br', slug: 'saoleopoldo', level: null, alert: 4.30, flood: 4.50, lat: -29.76, lon: -51.14 },
+  { id: 'uruguai', name: 'Rio Uruguai (Uruguaiana)', cod: '77150000', domain: 'niveluruguai.com.br', slug: 'uruguaiana', level: null, alert: 7.50, flood: 8.50, lat: -29.76, lon: -57.08 }
 ];
 
 // ==========================================
@@ -82,7 +82,7 @@ const HydrologyTerminal = ({ rivers }) => {
       <div className="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
         <div>
           <div className="flex items-center gap-1 text-[10px] text-blue-400 font-bold tracking-widest mb-1">
-            <Waves size={10} /> TELEMETRIA: WEB E GOVERNO
+            <Waves size={10} /> TELEMETRIA: SEMA / PRATICAGEM / ANA
           </div>
           <h2 className="text-xl lg:text-2xl font-black text-white">BACIAS HIDROGRÁFICAS</h2>
         </div>
@@ -104,7 +104,7 @@ const HydrologyTerminal = ({ rivers }) => {
                 <div>
                   <span className="font-bold text-slate-200 block">{river.name}</span>
                   <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded mt-1 inline-block ${typeof river.level === 'number' ? (river.isBackup ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30') : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'}`}>
-                    {typeof river.level === 'number' ? (river.isBackup ? 'FONTE: SITES COMUNITÁRIOS' : 'FONTE: SACE/ANA') : 'SINAL PERDIDO'}
+                    {typeof river.level === 'number' ? (river.isBackup ? 'REFERENCIAL SEMA (CAIS MAUÁ)' : 'REFERENCIAL ANA (LEITO)') : 'SINAL PERDIDO'}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -383,89 +383,84 @@ export default function App() {
       } catch (error) {}
     };
 
-    // NÚCLEO DE EXTRAÇÃO: PRIORIDADE 1 PARA WEB (SEMA/PRATICAGEM) E PRIORIDADE 2 PARA GOVERNO
+    // A MÁGICA FINAL: NÚCLEO DE EXTRAÇÃO 100% BLINDADO
     const fetchRivers = async () => {
       const updatedRivers = await Promise.all(INITIAL_RIVERS.map(async (rio) => {
         let nivelAtual = null;
-        let isBackup = true; // True = Veio do site, False = Veio do Governo
+        let isBackup = true; // True = Sites Comunitários (Referencial SEMA), False = Oficial (SACE/ANA)
 
-        // TÁTICA 1: RASPAGEM WEB (PRIORIDADE MÁXIMA PARA PEGAR O REFERENCIAL DA SEMA - EX: 0.57m)
-        if (rio.proxyUrl) {
+        const baseUrl = `https://${rio.domain}/${rio.slug}`;
+        const jsonUrl = `${baseUrl}.json`;
+
+        const proxies = [
+          (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+          (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
+        ];
+
+        // TÁTICA 1 (PRIORIDADE MÁXIMA): API JSON Pública do NivelGuaiba / NivelUruguai
+        for (const proxy of proxies) {
           try {
-            // Acessa o site comunitário pelo proxy da Vercel
-            const res = await fetch(rio.proxyUrl, { cache: "no-store" });
+            const res = await fetch(proxy(jsonUrl), { cache: "no-store" });
             if (res.ok) {
-              const htmlText = await res.text();
-              const doc = new DOMParser().parseFromString(htmlText, "text/html");
-              const textoBase = (doc.title + " " + doc.body.innerText).replace(/\s+/g, ' ');
-              
-              // Expressões restritas focadas em pegar a atualização da água
-              const regexList = [
-                /(?:atual|hoje|agora|cota)[\s\S]{0,20}?([0-9]{1,2}[.,][0-9]{1,2})\s*[cm]?m/gi,
-                /([0-9]{1,2}[.,][0-9]{1,2})\s*metros/gi,
-                /([0-9]{1,2}[.,][0-9]{1,2})\s*m\b/gi
-              ];
-
-              for (const rx of regexList) {
-                const matches = [...textoBase.matchAll(rx)];
-                for (const m of matches) {
-                  if (m[1]) {
-                    const num = parseFloat(m[1].replace(',', '.'));
-                    // FILTRO DE EXCLUSÃO: Impede a leitura de dados falsos (Alertas fixos ou números absurdos)
-                    if (num > 0.00 && num < 20 && num !== rio.alert && num !== rio.flood) {
-                      nivelAtual = num.toFixed(2);
-                      isBackup = true; // Confirma que é a leitura secundária (comunitária)
-                      break;
-                    }
-                  }
+              const text = await res.text();
+              // Regex varre o JSON cru e extrai o valor de "level" (evita erros de schema)
+              const matches = [...text.matchAll(/"(?:level|nivel)"\s*:\s*([0-9.]+)/gi)];
+              if (matches.length > 0) {
+                const num = parseFloat(matches[matches.length - 1][1]);
+                if (num > 0.01 && num < 35) {
+                  nivelAtual = num;
+                  isBackup = true;
+                  break;
                 }
-                if (nivelAtual !== null) break;
               }
             }
           } catch(e) {}
+          if (nivelAtual !== null) break;
         }
 
-        // TÁTICA 2: SACE/CPRM (SE O SITE CAIR, PUXA O DADO DO GOVERNO FEDERAL)
+        // TÁTICA 2: Leitura Direta do HTML com Regex de Precisão Militar (Se o JSON deles cair)
+        if (nivelAtual === null) {
+          for (const proxy of proxies) {
+            try {
+              const res = await fetch(proxy(baseUrl), { cache: "no-store" });
+              if (res.ok) {
+                const html = await res.text();
+                // A frase exata usada pela comunidade no site é: "é de X,XX m"
+                const match = html.match(/é de\s+([0-9]{1,2}[.,][0-9]{1,2})\s+m/i);
+                if (match && match[1]) {
+                  const num = parseFloat(match[1].replace(',', '.'));
+                  if (num > 0.01 && num < 35) {
+                    nivelAtual = num;
+                    isBackup = true;
+                    break;
+                  }
+                }
+              }
+            } catch(e) {}
+            if (nivelAtual !== null) break;
+          }
+        }
+
+        // TÁTICA 3: CPRM/SACE Oficial da Aeronáutica (O Plano B, retorna o Referencial de Leito/ANA - ex: 2.43m)
         if (nivelAtual === null) {
           try {
-            const res = await fetch(`/api/sace/${rio.cod}`, { cache: "no-store" });
+            const saceUrl = `https://sace.cprm.gov.br/api/dadosestacao/${rio.cod}`;
+            const res = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(saceUrl)}`, { cache: "no-store" });
             if (res.ok) {
               const data = await res.json();
               if (Array.isArray(data) && data.length > 0) {
                 for (let i = data.length - 1; i >= 0; i--) {
                   if (data[i].nivel) {
-                    nivelAtual = (data[i].nivel / 100).toFixed(2);
-                    isBackup = false; // Confirma que o dado é do CPRM (provavelmente com a cota antiga/2.43m)
+                    nivelAtual = data[i].nivel / 100;
+                    isBackup = false; 
                     break;
                   }
                 }
               }
             }
-          } catch (e) { }
+          } catch(e) {}
         }
 
-        // TÁTICA 3: ANA GOVERNO (ÚLTIMO RECURSO DA DEFESA CIVIL)
-        if (nivelAtual === null) {
-          try {
-            const res = await fetch(`/api/ana/${rio.cod}`, { cache: "no-store" });
-            if (res.ok) {
-              const xmlText = await res.text();
-              const parser = new DOMParser();
-              const xml = parser.parseFromString(xmlText, "text/xml");
-              const niveis = xml.getElementsByTagName("Nivel");
-              for (let i = 0; i < niveis.length; i++) {
-                const val = niveis[i].textContent;
-                if (val && !isNaN(val) && val.trim() !== "") {
-                  nivelAtual = (parseFloat(val) / 100).toFixed(2);
-                  isBackup = false;
-                  break;
-                }
-              }
-            }
-          } catch(e) { }
-        }
-
-        // RETORNO FINAL
         if (nivelAtual !== null && !isNaN(nivelAtual)) {
           return { ...rio, level: parseFloat(nivelAtual), isBackup };
         } else {
