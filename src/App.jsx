@@ -17,13 +17,13 @@ const BASES = [
   { id: 'SBBG', name: 'BAGÉ', lat: -31.33, lon: -54.11 }
 ];
 
-// URLs Táticas Independentes Mapeadas
+// URLs agora apontam para o nosso Túnel Privado da Vercel
 const INITIAL_RIVERS = [
-  { id: 'taquari', name: 'Rio Taquari (Estrela/Eldorado)', cod: '86695000', siteUrl: 'https://defesacivil.eldorado.rs.gov.br/monitoramento.php', level: null, alert: 15.00, flood: 19.00, lat: -29.50, lon: -51.96 },
-  { id: 'guaiba', name: 'Guaíba (Cais Mauá)', cod: '87450004', siteUrl: 'https://nivelguaiba.com.br/', level: null, alert: 2.50, flood: 3.00, lat: -30.03, lon: -51.23 },
-  { id: 'cai', name: 'Rio Caí (S. S. do Caí)', cod: '87382000', siteUrl: 'https://nivelguaiba.com.br/sao-sebastiao-do-cai', level: null, alert: 7.00, flood: 10.00, lat: -29.58, lon: -51.37 },
-  { id: 'sinos', name: 'Rio dos Sinos (S. Leopoldo)', cod: '87398000', siteUrl: 'https://nivelguaiba.com.br/sao-leopoldo', level: null, alert: 4.30, flood: 4.50, lat: -29.76, lon: -51.14 },
-  { id: 'uruguai', name: 'Rio Uruguai (Uruguaiana)', cod: '77150000', siteUrl: 'https://niveluruguai.com.br/', level: null, alert: 7.50, flood: 8.50, lat: -29.76, lon: -57.08 }
+  { id: 'taquari', name: 'Rio Taquari (Eldorado)', cod: '86695000', proxyUrl: '/api/taquari', level: null, alert: 15.00, flood: 19.00, lat: -29.50, lon: -51.96 },
+  { id: 'guaiba', name: 'Guaíba (Cais Mauá)', cod: '87450004', proxyUrl: '/api/guaiba', level: null, alert: 2.50, flood: 3.00, lat: -30.03, lon: -51.23 },
+  { id: 'cai', name: 'Rio Caí (S. S. do Caí)', cod: '87382000', proxyUrl: '/api/cai', level: null, alert: 7.00, flood: 10.00, lat: -29.58, lon: -51.37 },
+  { id: 'sinos', name: 'Rio dos Sinos (S. Leopoldo)', cod: '87398000', proxyUrl: '/api/sinos', level: null, alert: 4.30, flood: 4.50, lat: -29.76, lon: -51.14 },
+  { id: 'uruguai', name: 'Rio Uruguai (Uruguaiana)', cod: '77150000', proxyUrl: '/api/uruguai', level: null, alert: 7.50, flood: 8.50, lat: -29.76, lon: -57.08 }
 ];
 
 // ==========================================
@@ -82,7 +82,7 @@ const HydrologyTerminal = ({ rivers }) => {
       <div className="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
         <div>
           <div className="flex items-center gap-1 text-[10px] text-blue-400 font-bold tracking-widest mb-1">
-            <Waves size={10} /> TELEMETRIA TÁTICA ATIVA
+            <Waves size={10} /> TELEMETRIA NATIVA (VERCEL EDGE)
           </div>
           <h2 className="text-xl lg:text-2xl font-black text-white">BACIAS HIDROGRÁFICAS</h2>
         </div>
@@ -104,7 +104,7 @@ const HydrologyTerminal = ({ rivers }) => {
                 <div>
                   <span className="font-bold text-slate-200 block">{river.name}</span>
                   <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded mt-1 inline-block ${typeof river.level === 'number' ? (river.isBackup ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30') : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'}`}>
-                    {typeof river.level === 'number' ? (river.isBackup ? 'DADO ALTERNATIVO (COMUNIDADE)' : 'DADO OFICIAL (CPRM/ANA)') : 'SINAL PERDIDO'}
+                    {typeof river.level === 'number' ? (river.isBackup ? 'FONTE ALTERNATIVA (WEB)' : 'FONTE OFICIAL (SACE/ANA)') : 'SINAL PERDIDO'}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -262,6 +262,10 @@ const StationTerminal = ({ data }) => {
             <span className="text-[10px] lg:text-xs text-slate-400 font-medium">Sensação: {data.current.feels}°C</span>
           </div>
         </div>
+        <div className="hidden sm:flex flex-col gap-1 text-[10px] font-medium text-slate-400 bg-slate-900/50 p-2 rounded-lg border border-slate-800">
+          <span className="flex items-center gap-1"><Sunrise size={12} className="text-amber-400"/> Nascer: {data.daily.sunrise}</span>
+          <span className="flex items-center gap-1"><Sunset size={12} className="text-orange-500"/> Pôr: {data.daily.sunset}</span>
+        </div>
       </div>
 
       <h3 className="text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-wider">Aviação & Atmosfera</h3>
@@ -358,7 +362,7 @@ export default function App() {
               temp: Math.round(json.current.temperature_2m || 0), feels: Math.round(json.current.apparent_temperature), isDay: json.current.is_day,
               code: json.current.weather_code, visibility: json.current.visibility || 10000, pressure: Math.round(json.current.pressure_msl),
               windSpd: Math.round(json.current.wind_speed_10m), windDir: json.current.wind_direction_10m,
-              gusts: Math.round(json.current.wind_gusts_10m || json.current.wind_speed_10m), humidity: json.current.relative_humidity_2m || 0
+              gusts: Math.round(json.current.wind_gusts_10m || json.current.wind_speed_10m)
             },
             hourly: hourlyForecast, forecast: daysForecast
           };
@@ -383,81 +387,87 @@ export default function App() {
       } catch (error) {}
     };
 
-    // O NÚCLEO DE EXTRAÇÃO DE DADOS (BLINDADO)
+    // A MÁGICA FINAL: NÚCLEO NATIVO DE TÚNEL VERCEL
     const fetchRivers = async () => {
       const updatedRivers = await Promise.all(INITIAL_RIVERS.map(async (rio) => {
         let nivelAtual = null;
-        let isBackup = false; 
+        let isBackup = false;
 
-        // TÁTICA 1: SACE JSON (DIRETO E OFICIAL)
+        // TÁTICA 1: TÚNEL VERCEL DIRETO PRO CPRM (SACE)
         try {
-          const urlSace = `https://sace.cprm.gov.br/api/dadosestacao/${rio.cod}`;
-          const resSace = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(urlSace)}`, { cache: 'no-store' });
-          if (resSace.ok) {
-            const dataSace = await resSace.json();
-            if (dataSace && dataSace.contents) {
-              const matches = [...dataSace.contents.matchAll(/"nivel":\s*([0-9]+)/g)];
-              for (let i = matches.length - 1; i >= 0; i--) { 
-                const num = parseInt(matches[i][1]) / 100;
-                if (num > 0.1 && num < 35) {
-                  nivelAtual = num;
-                  isBackup = false;
+          const res = await fetch(`/api/sace/${rio.cod}`, { cache: "no-store" });
+          if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data) && data.length > 0) {
+              for (let i = data.length - 1; i >= 0; i--) {
+                if (data[i].nivel) {
+                  nivelAtual = (data[i].nivel / 100).toFixed(2);
+                  isBackup = false; 
                   break;
                 }
               }
             }
           }
-        } catch (e) {}
+        } catch (e) { }
 
-        // TÁTICA 2: ANA XML (SE O SACE CAIR)
+        // TÁTICA 2: TÚNEL VERCEL DIRETO PRA ANA (GOVERNO)
         if (nivelAtual === null) {
           try {
-            const urlANA = `http://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosTempoReal?codEstacao=${rio.cod}`;
-            const resAna = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(urlANA)}`, { cache: 'no-store' });
-            if (resAna.ok) {
-              const dataAna = await resAna.json();
-              if (dataAna && dataAna.contents) {
-                const matches = [...dataAna.contents.matchAll(/<Nivel>([0-9]+)<\/Nivel>/g)];
-                for (let i = matches.length - 1; i >= 0; i--) {
-                  const num = parseInt(matches[i][1]) / 100;
-                  if (num > 0.1 && num < 35) {
-                    nivelAtual = num;
-                    isBackup = false;
-                    break;
-                  }
+            const res = await fetch(`/api/ana/${rio.cod}`, { cache: "no-store" });
+            if (res.ok) {
+              const xmlText = await res.text();
+              const parser = new DOMParser();
+              const xml = parser.parseFromString(xmlText, "text/xml");
+              const niveis = xml.getElementsByTagName("Nivel");
+              for (let i = 0; i < niveis.length; i++) {
+                const val = niveis[i].textContent;
+                if (val && !isNaN(val) && val.trim() !== "") {
+                  nivelAtual = (parseFloat(val) / 100).toFixed(2);
+                  isBackup = false;
+                  break;
                 }
               }
             }
-          } catch (e) {}
+          } catch(e) { }
         }
 
-        // TÁTICA 3: SITES ALTERNATIVOS COM FILTRO DE NEGAÇÃO (SE O GOVERNO INTEIRO CAIR)
-        if (nivelAtual === null && rio.siteUrl) {
+        // TÁTICA 3: TÚNEL VERCEL PARA SITES COMUNITÁRIOS COM BLINDAGEM DE EXCLUSÃO
+        if (nivelAtual === null && rio.proxyUrl) {
           try {
-            const urlBuster = `${rio.siteUrl}${rio.siteUrl.includes('?') ? '&' : '?'}cb=${Date.now()}`;
-            const resWeb = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(urlBuster)}`, { cache: 'no-store' });
-            if (resWeb.ok) {
-              const dataWeb = await resWeb.json();
-              if (dataWeb && dataWeb.contents && !dataWeb.contents.includes('Cloudflare')) {
-                // Regex Bruto procurando o padrão X,XX m
-                const matches = [...dataWeb.contents.matchAll(/([0-9]{1,2})[,.]([0-9]{2})\s*m/gi)];
+            const res = await fetch(rio.proxyUrl, { cache: "no-store" });
+            if (res.ok) {
+              const htmlText = await res.text();
+              const doc = new DOMParser().parseFromString(htmlText, "text/html");
+              const textoBase = (doc.title + " " + doc.body.innerText).replace(/\s+/g, ' ');
+              
+              const regexList = [
+                /(?:nível|cota|atual|hoje)[\s\S]{0,20}?([0-9]{1,2}[.,][0-9]{1,2})/gi,
+                /([0-9]{1,2}[.,][0-9]{1,2})\s*metros/gi,
+                /([0-9]{1,2}[.,][0-9]{1,2})\s*m\b/gi
+              ];
+
+              for (const rx of regexList) {
+                const matches = [...textoBase.matchAll(rx)];
                 for (const m of matches) {
-                  const num = parseFloat(`${m[1]}.${m[2]}`);
-                  // FILTRO DE EXCLUSÃO: Ignora as cotas exatas de alerta/inundação que são texto fixo do site
-                  if (num > 0.1 && num < 30 && num !== rio.alert && num !== rio.flood) {
-                    nivelAtual = num;
-                    isBackup = true;
-                    break;
+                  if (m[1]) {
+                    const num = parseFloat(m[1].replace(',', '.'));
+                    // FILTRO MILITAR: Garante que é nível de rio e ignora os limites fixos de texto do site
+                    if (num > 0.01 && num < 25 && num !== rio.alert && num !== rio.flood) {
+                      nivelAtual = num.toFixed(2);
+                      isBackup = true;
+                      break;
+                    }
                   }
                 }
+                if (nivelAtual !== null) break;
               }
             }
-          } catch (e) {}
+          } catch(e) {}
         }
 
-        // RETORNO FINAL PARA TELA
-        if (nivelAtual !== null) {
-          return { ...rio, level: parseFloat(nivelAtual), isBackup: isBackup };
+        // RETORNO FINAL
+        if (nivelAtual !== null && !isNaN(nivelAtual)) {
+          return { ...rio, level: parseFloat(nivelAtual), isBackup };
         } else {
           return { ...rio, level: null, isBackup: false }; 
         }
