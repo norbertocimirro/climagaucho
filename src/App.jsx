@@ -17,9 +17,10 @@ const BASES = [
   { id: 'SBBG', name: 'BAGÉ', lat: -31.33, lon: -54.11 }
 ];
 
+// URLs Táticas Independentes integradas ao sistema
 const INITIAL_RIVERS = [
   { id: 'taquari', name: 'Rio Taquari (Estrela/Eldorado)', cod: '86695000', siteUrl: 'https://defesacivil.eldorado.rs.gov.br/monitoramento.php', level: null, alert: 15.00, flood: 19.00, lat: -29.50, lon: -51.96 },
-  { id: 'guaiba', name: 'Guaíba (Cais Mauá)', cod: '87450004', siteUrl: 'https://nivelguaiba.com.br/', level: null, alert: 2.50, flood: 3.00, lat: -30.03, lon: -51.23 },
+  { id: 'guaiba', name: 'Guaíba (Cais Mauá)', cod: '87450004', siteUrl: 'https://nivelguaiba.com.br/porto-alegre', level: null, alert: 2.50, flood: 3.00, lat: -30.03, lon: -51.23 },
   { id: 'cai', name: 'Rio Caí (S. S. do Caí)', cod: '87382000', siteUrl: 'https://nivelguaiba.com.br/sao-sebastiao-do-cai', level: null, alert: 7.00, flood: 10.00, lat: -29.58, lon: -51.37 },
   { id: 'sinos', name: 'Rio dos Sinos (S. Leopoldo)', cod: '87398000', siteUrl: 'https://nivelguaiba.com.br/sao-leopoldo', level: null, alert: 4.30, flood: 4.50, lat: -29.76, lon: -51.14 },
   { id: 'uruguai', name: 'Rio Uruguai (Uruguaiana)', cod: '77150000', siteUrl: 'https://niveluruguai.com.br/', level: null, alert: 7.50, flood: 8.50, lat: -29.76, lon: -57.08 }
@@ -81,7 +82,7 @@ const HydrologyTerminal = ({ rivers }) => {
       <div className="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
         <div>
           <div className="flex items-center gap-1 text-[10px] text-blue-400 font-bold tracking-widest mb-1">
-            <Waves size={10} /> TELEMETRIA: ANA / SITES INDEPENDENTES
+            <Waves size={10} /> TELEMETRIA: SACE / ANA / WEB
           </div>
           <h2 className="text-xl lg:text-2xl font-black text-white">BACIAS HIDROGRÁFICAS</h2>
         </div>
@@ -103,7 +104,7 @@ const HydrologyTerminal = ({ rivers }) => {
                 <div>
                   <span className="font-bold text-slate-200 block">{river.name}</span>
                   <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded mt-1 inline-block ${typeof river.level === 'number' ? (river.isBackup ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30') : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'}`}>
-                    {typeof river.level === 'number' ? (river.isBackup ? 'MONITORAMENTO ALTERNATIVO (WEB)' : 'SATÉLITE ANA (OFICIAL)') : 'SINAL PERDIDO'}
+                    {typeof river.level === 'number' ? (river.isBackup ? 'MONITORAMENTO ALTERNATIVO (WEB)' : 'SATÉLITE (OFICIAL)') : 'SINAL PERDIDO'}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -261,6 +262,10 @@ const StationTerminal = ({ data }) => {
             <span className="text-[10px] lg:text-xs text-slate-400 font-medium">Sensação: {data.current.feels}°C</span>
           </div>
         </div>
+        <div className="hidden sm:flex flex-col gap-1 text-[10px] font-medium text-slate-400 bg-slate-900/50 p-2 rounded-lg border border-slate-800">
+          <span className="flex items-center gap-1"><Sunrise size={12} className="text-amber-400"/> Nascer: {data.daily.sunrise}</span>
+          <span className="flex items-center gap-1"><Sunset size={12} className="text-orange-500"/> Pôr: {data.daily.sunset}</span>
+        </div>
       </div>
 
       <h3 className="text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-wider">Aviação & Atmosfera</h3>
@@ -391,73 +396,52 @@ export default function App() {
       } catch (error) { console.error("Erro radar"); }
     };
 
-    // FETCH: O TRITURADOR DE HTML (MÁXIMA FORÇA BRUTA COM FILTRO DE EXCLUSÃO)
+    // FETCH: MULTI-INTELIGÊNCIA (SACE/CPRM JSON -> ANA XML -> WEB SCRAPER RESTRITO)
     const fetchRivers = async () => {
       const proxies = [
-        (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-        (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
-        (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`
+        (url) => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+        (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
       ];
 
       const updatedRivers = await Promise.all(INITIAL_RIVERS.map(async (rio) => {
         let nivelAtual = null;
         let isBackup = false; 
 
-        // 1. PRIORIDADE MÁXIMA: RASPAGEM DA WEB (SITES INDEPENDENTES)
-        if (rio.siteUrl) {
-          for (const proxy of proxies) {
-            try {
-              const urlBuster = `${rio.siteUrl}${rio.siteUrl.includes('?') ? '&' : '?'}cb=${Date.now()}`;
-              const res = await fetch(proxy(urlBuster), { cache: "no-store" });
+        // TÁTICA 1: API JSON OFICIAL DO CPRM/SACE (Mais robusta, não exige varredura HTML)
+        for (const proxy of proxies) {
+          try {
+            const saceUrl = `https://sace.cprm.gov.br/api/dadosestacao/${rio.cod}`;
+            const res = await fetch(proxy(saceUrl), { cache: "no-store" });
+            if (res.ok) {
+              const data = await res.json();
+              const jsonSace = data.contents ? JSON.parse(data.contents) : data; // AllOrigins vs CodeTabs parse
               
-              if (res.ok) {
-                const html = await res.text();
-                // Limpa todo o HTML, remove tags e espaços duplos
-                const textoPuro = html.replace(/<[^>]*>?/gm, ' ').replace(/\s+/g, ' ');
-                
-                const regexList = [
-                  /(?:nível atual|nivel atual|medido|agora|hoje)[\s\S]{0,30}?([0-9]{1,2}[.,][0-9]{1,2})/gi,
-                  /atual[\s\S]{0,20}?([0-9]{1,2}[.,][0-9]{1,2})/gi,
-                  /([0-9]{1,2}[.,][0-9]{1,2})\s*[cm]?m/gi,
-                  /([0-9]{1,2}[.,][0-9]{1,2})/gi
-                ];
-
-                for (const rx of regexList) {
-                  const matches = [...textoPuro.matchAll(rx)];
-                  for (const m of matches) {
-                    const numeroStr = m[1];
-                    if (numeroStr) {
-                      const numero = parseFloat(numeroStr.replace(',', '.'));
-                      
-                      // FILTRO DE EXCLUSÃO (A Mágica): 
-                      // O número tem que ser lógico (entre 0.01 e 35m).
-                      // E NÃO PODE SER EXATAMENTE a Cota de Alerta ou de Inundação.
-                      // Isso impede o robô de pegar os textos fixos "Cota de Inundação: 3,00m".
-                      if (numero > 0.01 && numero < 35 && numero !== rio.alert && numero !== rio.flood && numero !== 20.24 && numero !== 20.25) {
-                        nivelAtual = numero;
-                        isBackup = true; 
-                        break; // Quebra o match loop
-                      }
-                    }
+              if (Array.isArray(jsonSace) && jsonSace.length > 0) {
+                // Pega a leitura mais recente que seja válida
+                for (let i = jsonSace.length - 1; i >= 0; i--) {
+                  if (jsonSace[i].nivel) {
+                    nivelAtual = (jsonSace[i].nivel / 100).toFixed(2);
+                    isBackup = false; 
+                    break;
                   }
-                  if (nivelAtual !== null) break; // Quebra o loop de regex
                 }
               }
-              if (nivelAtual !== null) break; // Quebra o loop de proxies
-            } catch (e) {
-              // Falhou em silêncio
             }
-          }
+            if (nivelAtual !== null) break;
+          } catch (e) { }
         }
 
-        // 2. SE OS SITES FALHAREM, TENTA A ANA (GOVERNO)
+        // TÁTICA 2: XML DA ANA (Fallback Oficial)
         if (nivelAtual === null) {
-          const urlANA = `http://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosTempoReal?codEstacao=${rio.cod}`;
+          const timestamp = new Date().getTime();
+          const urlANA = `http://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosTempoReal?codEstacao=${rio.cod}&_=${timestamp}`;
           for (const proxy of proxies) {
             try {
               const res = await fetch(proxy(urlANA), { cache: "no-store" });
               if (res.ok) {
-                const xmlText = await res.text();
+                const data = await res.json();
+                const xmlText = data.contents ? data.contents : (await res.text());
+                
                 if (xmlText.includes('<Nivel>')) {
                   const parser = new DOMParser();
                   const xml = parser.parseFromString(xmlText, "text/xml");
@@ -477,7 +461,46 @@ export default function App() {
           }
         }
 
-        // RETORNO BLINDADO
+        // TÁTICA 3: O TRITURADOR BLINDADO (Web Scraper Estrito)
+        if (nivelAtual === null && rio.siteUrl) {
+          try {
+            const urlBuster = `${rio.siteUrl}${rio.siteUrl.includes('?') ? '&' : '?'}cb=${Date.now()}`;
+            const resWeb = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(urlBuster)}`, { cache: "no-store" });
+            
+            if (resWeb.ok) {
+              const data = await resWeb.json();
+              const htmlText = data.contents;
+              
+              const doc = new DOMParser().parseFromString(htmlText, "text/html");
+              let textoBase = (doc.title + " " + doc.body.innerText).replace(/\s+/g, ' ');
+              
+              // Regex restrita: O número PRECISA estar grudado num "m" ou "metros"
+              const regexList = [
+                /(?:nível|cota)[\s\S]{0,15}?([0-9]{1,2}[.,][0-9]{1,2})\s*m/gi,
+                /([0-9]{1,2}[.,][0-9]{1,2})\s*metros/gi,
+                /([0-9]{1,2}[.,][0-9]{1,2})\s*m\b/gi
+              ];
+
+              for (const rx of regexList) {
+                const matches = [...textoBase.matchAll(rx)];
+                for (const m of matches) {
+                  if (m[1]) {
+                    const num = parseFloat(m[1].replace(',', '.'));
+                    // FILTRO DE BARRAGEM: Evita temperatura (33.5) e evita ler a Cota Fixa (ex: 3.00m)
+                    if (num > 0.01 && num < 25 && num !== rio.alert && num !== rio.flood) {
+                      nivelAtual = num.toFixed(2);
+                      isBackup = true;
+                      break;
+                    }
+                  }
+                }
+                if (nivelAtual !== null) break;
+              }
+            }
+          } catch (e) { }
+        }
+
+        // RETORNO FINAL
         if (nivelAtual !== null && !isNaN(nivelAtual)) {
           return { ...rio, level: parseFloat(nivelAtual), isBackup: isBackup };
         } else {
