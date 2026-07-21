@@ -17,13 +17,12 @@ const BASES = [
   { id: 'SBBG', name: 'BAGÉ', lat: -31.33, lon: -54.11 }
 ];
 
-// URLs Táticas Mapeadas para extração de JSON da Praticagem/SEMA
 const INITIAL_RIVERS = [
-  { id: 'taquari', name: 'Rio Taquari (Estrela/Eldorado)', cod: '86695000', domain: 'nivelguaiba.com.br', slug: 'estrela', level: null, alert: 15.00, flood: 19.00, lat: -29.50, lon: -51.96 },
-  { id: 'guaiba', name: 'Guaíba (Cais Mauá)', cod: '87450004', domain: 'nivelguaiba.com.br', slug: 'portoalegre', level: null, alert: 2.50, flood: 3.00, lat: -30.03, lon: -51.23 },
-  { id: 'cai', name: 'Rio Caí (S. S. do Caí)', cod: '87382000', domain: 'nivelguaiba.com.br', slug: 'saosebastiaodocai', level: null, alert: 7.00, flood: 10.00, lat: -29.58, lon: -51.37 },
-  { id: 'sinos', name: 'Rio dos Sinos (S. Leopoldo)', cod: '87398000', domain: 'nivelguaiba.com.br', slug: 'saoleopoldo', level: null, alert: 4.30, flood: 4.50, lat: -29.76, lon: -51.14 },
-  { id: 'uruguai', name: 'Rio Uruguai (Uruguaiana)', cod: '77150000', domain: 'niveluruguai.com.br', slug: 'uruguaiana', level: null, alert: 7.50, flood: 8.50, lat: -29.76, lon: -57.08 }
+  { id: 'taquari', name: 'Rio Taquari (Eldorado)', cod: '86695000', proxyUrl: '/api/taquari', siteUrl: 'https://defesacivil.eldorado.rs.gov.br/monitoramento.php', level: null, alert: 15.00, flood: 19.00, lat: -29.50, lon: -51.96 },
+  { id: 'guaiba', name: 'Guaíba (Cais Mauá)', cod: '87450004', proxyUrl: '/api/guaiba', siteUrl: 'https://nivelguaiba.com.br/porto-alegre', level: null, alert: 2.50, flood: 3.00, lat: -30.03, lon: -51.23 },
+  { id: 'cai', name: 'Rio Caí (S. S. do Caí)', cod: '87382000', proxyUrl: '/api/cai', siteUrl: 'https://nivelguaiba.com.br/sao-sebastiao-do-cai', level: null, alert: 7.00, flood: 10.00, lat: -29.58, lon: -51.37 },
+  { id: 'sinos', name: 'Rio dos Sinos (S. Leopoldo)', cod: '87398000', proxyUrl: '/api/sinos', siteUrl: 'https://nivelguaiba.com.br/sao-leopoldo', level: null, alert: 4.30, flood: 4.50, lat: -29.76, lon: -51.14 },
+  { id: 'uruguai', name: 'Rio Uruguai (Uruguaiana)', cod: '77150000', proxyUrl: '/api/uruguai', siteUrl: 'https://niveluruguai.com.br/', level: null, alert: 7.50, flood: 8.50, lat: -29.76, lon: -57.08 }
 ];
 
 // ==========================================
@@ -104,7 +103,7 @@ const HydrologyTerminal = ({ rivers }) => {
                 <div>
                   <span className="font-bold text-slate-200 block">{river.name}</span>
                   <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded mt-1 inline-block ${typeof river.level === 'number' ? (river.isBackup ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30') : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'}`}>
-                    {typeof river.level === 'number' ? (river.isBackup ? 'REFERENCIAL SEMA (CAIS MAUÁ)' : 'REFERENCIAL ANA (LEITO)') : 'SINAL PERDIDO'}
+                    {typeof river.level === 'number' ? (river.isBackup ? 'REFERENCIAL SEMA (CAIS MAUÁ)' : 'REFERENCIAL CPRM/ANA (LEITO)') : 'SINAL PERDIDO'}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -383,84 +382,103 @@ export default function App() {
       } catch (error) {}
     };
 
-    // A MÁGICA FINAL: NÚCLEO DE EXTRAÇÃO 100% BLINDADO
+    // NÚCLEO EXTRATOR: FORÇA TAREFA TRIPLA 
     const fetchRivers = async () => {
       const updatedRivers = await Promise.all(INITIAL_RIVERS.map(async (rio) => {
         let nivelAtual = null;
         let isBackup = true; // True = Sites Comunitários (Referencial SEMA), False = Oficial (SACE/ANA)
 
-        const baseUrl = `https://${rio.domain}/${rio.slug}`;
-        const jsonUrl = `${baseUrl}.json`;
-
-        const proxies = [
-          (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-          (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
-        ];
-
-        // TÁTICA 1 (PRIORIDADE MÁXIMA): API JSON Pública do NivelGuaiba / NivelUruguai
-        for (const proxy of proxies) {
-          try {
-            const res = await fetch(proxy(jsonUrl), { cache: "no-store" });
-            if (res.ok) {
-              const text = await res.text();
-              // Regex varre o JSON cru e extrai o valor de "level" (evita erros de schema)
-              const matches = [...text.matchAll(/"(?:level|nivel)"\s*:\s*([0-9.]+)/gi)];
-              if (matches.length > 0) {
-                const num = parseFloat(matches[matches.length - 1][1]);
-                if (num > 0.01 && num < 35) {
-                  nivelAtual = num;
-                  isBackup = true;
-                  break;
-                }
-              }
+        // CANAL 1: SITES COMUNITÁRIOS (PRIORIDADE MÁXIMA PARA PEGAR O 0.57m)
+        if (rio.siteUrl) {
+          // Bateria de 3 proxies de invasão
+          const strategiesWeb = [
+            async () => {
+               if (!rio.proxyUrl) throw new Error();
+               const r = await fetch(rio.proxyUrl, { cache: 'no-store' });
+               if(!r.ok) throw new Error();
+               return await r.text();
+            },
+            async () => {
+               const targetUrl = `${rio.siteUrl}${rio.siteUrl.includes('?') ? '&' : '?'}cb=${Date.now()}`;
+               const r = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`, { cache: 'no-store' });
+               if(!r.ok) throw new Error();
+               const d = await r.json();
+               return d.contents || '';
+            },
+            async () => {
+               const targetUrl = `${rio.siteUrl}${rio.siteUrl.includes('?') ? '&' : '?'}cb=${Date.now()}`;
+               const r = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`, { cache: 'no-store' });
+               if(!r.ok) throw new Error();
+               return await r.text();
             }
-          } catch(e) {}
-          if (nivelAtual !== null) break;
-        }
+          ];
 
-        // TÁTICA 2: Leitura Direta do HTML com Regex de Precisão Militar (Se o JSON deles cair)
-        if (nivelAtual === null) {
-          for (const proxy of proxies) {
+          for (const strat of strategiesWeb) {
             try {
-              const res = await fetch(proxy(baseUrl), { cache: "no-store" });
-              if (res.ok) {
-                const html = await res.text();
-                // A frase exata usada pela comunidade no site é: "é de X,XX m"
-                const match = html.match(/é de\s+([0-9]{1,2}[.,][0-9]{1,2})\s+m/i);
-                if (match && match[1]) {
-                  const num = parseFloat(match[1].replace(',', '.'));
-                  if (num > 0.01 && num < 35) {
-                    nivelAtual = num;
-                    isBackup = true;
-                    break;
-                  }
-                }
+              const html = await strat();
+              // Se a Cloudflare bloqueou a leitura, ele aborta e tenta o próximo túnel
+              if (!html || html.includes('Cloudflare') || html.includes('Just a moment')) continue;
+              
+              const doc = new DOMParser().parseFromString(html, "text/html");
+              const text = doc.body.innerText.replace(/\s+/g, ' ');
+              
+              // Busca pela frase exata que entrega o número verdadeiro do site
+              let matches = [...text.matchAll(/é de\s*([0-9]{1,2}[.,][0-9]{1,2})\s*m/gi)];
+              
+              if (matches.length === 0) {
+                 matches = [...text.matchAll(/(?:nível|cota)[\s\S]{0,30}?([0-9]{1,2}[.,][0-9]{1,2})\s*m/gi)];
               }
+              
+              for (const m of matches) {
+                 if (m[1]) {
+                   const num = parseFloat(m[1].replace(',', '.'));
+                   // Filtro: Impede ler as cotas fixas (ex: 3.00 ou 4.50) e protege contra picos históricos antigos
+                   if (num > 0.01 && num < 20 && num !== rio.alert && num !== rio.flood && num !== 4.5 && num !== 3) {
+                     nivelAtual = num.toFixed(2);
+                     isBackup = true;
+                     break;
+                   }
+                 }
+              }
+              if (nivelAtual !== null) break;
             } catch(e) {}
-            if (nivelAtual !== null) break;
           }
         }
 
-        // TÁTICA 3: CPRM/SACE Oficial da Aeronáutica (O Plano B, retorna o Referencial de Leito/ANA - ex: 2.43m)
+        // CANAL 2: SE A WEB CAIR TOTALMENTE, BUSCA NA CPRM/SACE
         if (nivelAtual === null) {
-          try {
-            const saceUrl = `https://sace.cprm.gov.br/api/dadosestacao/${rio.cod}`;
-            const res = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(saceUrl)}`, { cache: "no-store" });
-            if (res.ok) {
-              const data = await res.json();
-              if (Array.isArray(data) && data.length > 0) {
-                for (let i = data.length - 1; i >= 0; i--) {
-                  if (data[i].nivel) {
-                    nivelAtual = data[i].nivel / 100;
-                    isBackup = false; 
-                    break;
-                  }
-                }
-              }
-            }
-          } catch(e) {}
+           const saceStrategies = [
+             async () => {
+                const r = await fetch(`/api/sace/${rio.cod}`, { cache: 'no-store' });
+                if(!r.ok) throw new Error();
+                return await r.json();
+             },
+             async () => {
+                const r = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent('https://sace.cprm.gov.br/api/dadosestacao/' + rio.cod)}`, { cache: 'no-store' });
+                if(!r.ok) throw new Error();
+                const text = await r.text();
+                return JSON.parse(text);
+             }
+           ];
+
+           for(const strat of saceStrategies) {
+             try {
+               const data = await strat();
+               if (Array.isArray(data) && data.length > 0) {
+                 for (let i = data.length - 1; i >= 0; i--) {
+                   if (data[i].nivel) {
+                     nivelAtual = (data[i].nivel / 100).toFixed(2);
+                     isBackup = false; // Origem CPRM (Referencial do leito da ANA - ex: 2.43m)
+                     break;
+                   }
+                 }
+               }
+               if (nivelAtual !== null) break;
+             } catch(e) {}
+           }
         }
 
+        // RETORNO FINAL
         if (nivelAtual !== null && !isNaN(nivelAtual)) {
           return { ...rio, level: parseFloat(nivelAtual), isBackup };
         } else {
