@@ -1,0 +1,11 @@
+{
+  "rewrites": [
+    { "source": "/api/sace/:cod", "destination": "https://sace.cprm.gov.br/api/dadosestacao/:cod" },
+    { "source": "/api/ana/:cod", "destination": "http://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosTempoReal?codEstacao=:cod" },
+    { "source": "/api/guaiba", "destination": "https://nivelguaiba.com.br/" },
+    { "source": "/api/cai", "destination": "https://nivelguaiba.com.br/sao-sebastiao-do-cai" },
+    { "source": "/api/sinos", "destination": "https://nivelguaiba.com.br/sao-leopoldo" },
+    { "source": "/api/uruguai", "destination": "https://niveluruguai.com.br/" },
+    { "source": "/api/taquari", "destination": "https://defesacivil.eldorado.rs.gov.br/monitoramento.php" }
+  ]
+}
