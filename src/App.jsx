@@ -17,7 +17,7 @@ const BASES = [
   { id: 'SBBG', name: 'BAGÉ', lat: -31.33, lon: -54.11 }
 ];
 
-// Ouro Tático: Links Diretos de Feed RSS (Leitura ultrarrápida via API Conversora)
+// Ouro Tático: Links Diretos de Feed JSON/RSS (Leitura Pura)
 const INITIAL_RIVERS = [
   { id: 'taquari', name: 'Rio Taquari (Estrela)', cod: '86695000', feedUrl: null, level: null, alert: 15.00, flood: 19.00, lat: -29.50, lon: -51.96 },
   { id: 'guaiba', name: 'Guaíba (Cais Mauá)', cod: '87450004', feedUrl: 'https://nivelguaiba.com.br/feed', level: null, alert: 2.50, flood: 3.00, lat: -30.03, lon: -51.23 },
@@ -74,7 +74,7 @@ const HydrologyTerminal = ({ rivers, isSyncing }) => {
     return (
       <div className="bg-[#0b1120]/90 backdrop-blur-xl rounded-2xl p-6 border border-slate-700 shadow-2xl h-full flex flex-col items-center justify-center">
         <Loader2 size={32} className="text-cyan-400 animate-spin mb-4" />
-        <span className="text-cyan-400 font-bold tracking-widest text-xs">SINCRONIZANDO CONEXÃO SATÉLITE/WEB...</span>
+        <span className="text-cyan-400 font-bold tracking-widest text-xs">LENDO DADOS DO FEED...</span>
       </div>
     );
   }
@@ -84,7 +84,7 @@ const HydrologyTerminal = ({ rivers, isSyncing }) => {
       <div className="flex justify-between items-center mb-4 border-b border-slate-800 pb-3 shrink-0">
         <div>
           <div className="flex items-center gap-1 text-[10px] text-cyan-400 font-bold tracking-widest mb-1">
-            <ActivitySquare size={10} /> TELEMETRIA NATIVA (FEEDS RSS/JSON)
+            <ActivitySquare size={10} /> TELEMETRIA NATIVA (FEEDS JSON)
           </div>
           <h2 className="text-xl lg:text-2xl font-black text-white">REDE HIDROLÓGICA</h2>
         </div>
@@ -118,7 +118,7 @@ const HydrologyTerminal = ({ rivers, isSyncing }) => {
                 <span className={`text-xs font-bold ${isOffline ? 'text-slate-500' : 'text-slate-200'}`}>{river.name}</span>
                 {!isOffline && (
                   <span className={`text-[8px] px-1.5 py-0.5 rounded font-bold tracking-widest ${river.isFeed ? 'bg-cyan-500/10 text-cyan-500 border border-cyan-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'}`}>
-                    {river.isFeed ? 'FEED DA COMUNIDADE' : 'SACE/ANA'}
+                    {river.isFeed ? 'FEED DA COMUNIDADE' : 'SACE/ANA OFICIAL'}
                   </span>
                 )}
               </div>
@@ -391,57 +391,88 @@ export default function App() {
       } catch (error) {}
     };
 
-    // A ARMA DEFINITIVA: API RSS2JSON (Bypassa qualquer Cloudflare nativamente)
+    // A MÁGICA DEFINITIVA: LENDO O FEED JSON COMO ELE É
     const fetchRivers = async () => {
-      setIsHydroSyncing(true); // Liga o loader
+      setIsHydroSyncing(true);
       
+      const proxies = [
+        (url) => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+        (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+        (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`
+      ];
+
       try {
         const updatedRivers = await Promise.all(INITIAL_RIVERS.map(async (rio) => {
           let nivelAtual = null;
           let isFeed = false;
 
-          // TÁTICA 1: Usando a API Profissional rss2json.com
-          // Ela entra no link de forma validada, converte o XML e passa ileso por firewalls
+          // TÁTICA 1: LER DIRETAMENTE O TEXTO DO SEU FEED JSON/XML
           if (rio.feedUrl) {
-            try {
-              const urlConvertida = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rio.feedUrl)}`;
-              const res = await fetch(urlConvertida, { cache: 'no-store' });
-              
-              if (res.ok) {
-                const data = await res.json();
-                if (data.status === 'ok' && data.items && data.items.length > 0) {
-                  // O Feed traz os dados no Title e Description do último artigo
-                  const textContent = `${data.items[0].title} ${data.items[0].description}`.replace(/\s+/g, ' ');
+            for (const proxy of proxies) {
+              try {
+                const urlBuster = `${rio.feedUrl}${rio.feedUrl.includes('?') ? '&' : '?'}cb=${Date.now()}`;
+                const res = await fetch(proxy(urlBuster), { cache: 'no-store' });
+                
+                if (res.ok) {
+                  let rawText = "";
                   
-                  // Caçador de Regex refinado para texto limpo de JSON
-                  const matches = [...textContent.matchAll(/([0-9]{1,2}[.,][0-9]{1,2})\s*m?/gi)];
-                  
-                  for (const m of matches) {
-                    if (m[1]) {
-                      const num = parseFloat(m[1].replace(',', '.'));
-                      if (num > 0.01 && num < 35 && num !== rio.alert && num !== rio.flood) {
-                        nivelAtual = num.toFixed(2);
-                        isFeed = true;
-                        break;
+                  // Se for AllOrigins, o dado vem dentro de "contents"
+                  if (proxy("").includes("allorigins")) {
+                    const json = await res.json();
+                    rawText = json.contents || JSON.stringify(json);
+                  } else {
+                    rawText = await res.text();
+                  }
+
+                  // O Extrator Universal de JSON (Puxa qualquer número de 0.01 a 25.00 que esteja no arquivo)
+                  if (rawText && !rawText.includes('Cloudflare') && !rawText.includes('Just a moment')) {
+                    const regexList = [
+                      /"(?:nivel|level|valor|cota|atual)"\s*:\s*"?([0-9]{1,2}[.,][0-9]{1,2})"?/gi,
+                      /"(?:title|description|text|content_text|content)"\s*:\s*"[^"]*?([0-9]{1,2}[.,][0-9]{1,2})\s*m?[^"]*"/gi,
+                      /<(?:nivel|level|cota|atual)>([0-9]{1,2}[.,][0-9]{1,2})<\//gi,
+                      /<(?:title|description)>[^<]*?([0-9]{1,2}[.,][0-9]{1,2})\s*m?[^<]*?<\//gi,
+                      /([0-9]{1,2}[.,][0-9]{1,2})\s*m\b/gi,
+                      /:\s*"?([0-9]{1,2}[.,][0-9]{1,2})"?/gi // Varredura bruta em JSON
+                    ];
+
+                    for (const rx of regexList) {
+                      const matches = [...rawText.matchAll(rx)];
+                      for (const m of matches) {
+                        if (m[1]) {
+                          const num = parseFloat(m[1].replace(',', '.'));
+                          // Filtro que impede que o 2.50 ou 3.00 seja lido como água
+                          if (num > 0.01 && num < 25 && num !== rio.alert && num !== rio.flood) {
+                            nivelAtual = num.toFixed(2);
+                            isFeed = true;
+                            break;
+                          }
+                        }
                       }
+                      if (nivelAtual !== null) break;
                     }
                   }
                 }
-              }
-            } catch (e) {
-              console.error(`Falha no Feed do rio ${rio.name}`, e);
+              } catch (e) {}
+              if (nivelAtual !== null) break; // Sucesso, sai do loop de proxies
             }
           }
 
-          // TÁTICA 2: SACE/CPRM JSON VIA ALLORIGINS GET
-          if (nivelAtual === null) {
-            try {
-              const saceUrl = `https://api.allorigins.win/get?url=${encodeURIComponent('https://sace.cprm.gov.br/api/dadosestacao/' + rio.cod)}`;
-              const resSace = await fetch(saceUrl, { cache: 'no-store' });
-              if (resSace.ok) {
-                const dataSace = await resSace.json();
-                if (dataSace.contents) {
-                  const parsedSace = JSON.parse(dataSace.contents);
+          // TÁTICA 2: SACE/CPRM (Se o Feed cair)
+          if (nivelAtual === null && rio.cod) {
+            const saceUrl = `https://sace.cprm.gov.br/api/dadosestacao/${rio.cod}`;
+            for (const proxy of proxies) {
+              try {
+                const resSace = await fetch(proxy(saceUrl), { cache: 'no-store' });
+                if (resSace.ok) {
+                  let rawSace = "";
+                  if (proxy("").includes("allorigins")) {
+                    const json = await resSace.json();
+                    rawSace = json.contents;
+                  } else {
+                    rawSace = await resSace.text();
+                  }
+                  
+                  const parsedSace = JSON.parse(rawSace);
                   if (Array.isArray(parsedSace) && parsedSace.length > 0) {
                     for (let i = parsedSace.length - 1; i >= 0; i--) {
                       if (parsedSace[i].nivel) {
@@ -452,31 +483,41 @@ export default function App() {
                     }
                   }
                 }
-              }
-            } catch(e) {}
+              } catch(e) {}
+              if (nivelAtual !== null) break;
+            }
           }
 
-          // TÁTICA 3: ANA GOVERNO XML (Fallback Final)
-          if (nivelAtual === null) {
-            try {
-              const anaUrl = `https://api.allorigins.win/get?url=${encodeURIComponent('http://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosTempoReal?codEstacao=' + rio.cod)}`;
-              const resAna = await fetch(anaUrl, { cache: 'no-store' });
-              if (resAna.ok) {
-                const dataAna = await resAna.json();
-                const text = dataAna.contents || '';
-                if (text && text.includes('<Nivel>')) {
-                   const matches = [...text.matchAll(/<Nivel>([0-9]+)<\/Nivel>/g)];
-                   for (let i = matches.length - 1; i >= 0; i--) {
-                      const num = parseFloat(matches[i][1]);
-                      if (!isNaN(num)) {
-                         nivelAtual = (num / 100).toFixed(2);
-                         isFeed = false;
-                         break;
-                      }
-                   }
+          // TÁTICA 3: ANA GOVERNO XML (Se o SACE cair)
+          if (nivelAtual === null && rio.cod) {
+            const anaUrl = `http://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosTempoReal?codEstacao=${rio.cod}`;
+            for (const proxy of proxies) {
+              try {
+                const resAna = await fetch(proxy(anaUrl), { cache: 'no-store' });
+                if (resAna.ok) {
+                  let rawAna = "";
+                  if (proxy("").includes("allorigins")) {
+                    const json = await resAna.json();
+                    rawAna = json.contents;
+                  } else {
+                    rawAna = await resAna.text();
+                  }
+                  
+                  if (rawAna && rawAna.includes('<Nivel>')) {
+                     const matches = [...rawAna.matchAll(/<Nivel>([0-9]+)<\/Nivel>/g)];
+                     for (let i = matches.length - 1; i >= 0; i--) {
+                        const num = parseFloat(matches[i][1]);
+                        if (!isNaN(num)) {
+                           nivelAtual = (num / 100).toFixed(2);
+                           isFeed = false;
+                           break;
+                        }
+                     }
+                  }
                 }
-              }
-            } catch(e) {}
+              } catch(e) {}
+              if (nivelAtual !== null) break;
+            }
           }
 
           return { ...rio, level: nivelAtual ? parseFloat(nivelAtual) : null, isFeed };
@@ -484,10 +525,9 @@ export default function App() {
         
         setRiverData(updatedRivers);
       } catch (error) {
-        console.error("Falha tática geral na hidrologia:", error);
+        console.error("Falha tática na hidrologia:", error);
       } finally {
-        // A TRAVA DE SEGURANÇA: Garante que o Loader Desligue
-        setIsHydroSyncing(false); 
+        setIsHydroSyncing(false); // Sempre desliga o Loader
       }
     };
 
@@ -590,7 +630,7 @@ export default function App() {
                 <TileLayer key={`${frame.path}-${idx}`} url={`${radarHost}${frame.path}/256/{z}/{x}/{y}/6/1_1.png`} opacity={idx === activeFrameIndex ? 0.85 : 0} maxNativeZoom={6} maxZoom={12} zIndex={10 + idx} />
               ))}
               {activeId === 'HYDRO' ? (
-                 riverData.map(r => r.level && (
+                 riverData.map(r => r.level !== null && (
                    <CircleMarker key={r.id} center={[r.lat, r.lon]} radius={6} color="#3b82f6" fillColor="#60a5fa" fillOpacity={1} zIndexOffset={200}>
                      <Tooltip direction="top" offset={[0, -10]} opacity={1} permanent>{r.name}</Tooltip>
                    </CircleMarker>
