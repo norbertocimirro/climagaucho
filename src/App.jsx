@@ -17,13 +17,13 @@ const BASES = [
   { id: 'SBBG', name: 'BAGÉ', lat: -31.33, lon: -54.11 }
 ];
 
-// Ouro Tático: Links Diretos de Feed RSS (Leitura ultrarrápida, zero CPU)
+// Ouro Tático: Links Diretos de Feed RSS (Leitura ultrarrápida via API Conversora)
 const INITIAL_RIVERS = [
   { id: 'taquari', name: 'Rio Taquari (Estrela)', cod: '86695000', feedUrl: null, level: null, alert: 15.00, flood: 19.00, lat: -29.50, lon: -51.96 },
-  { id: 'guaiba', name: 'Guaíba (Cais Mauá)', cod: '87450004', feedUrl: 'https://nivelguaiba.com.br/feed/', level: null, alert: 2.50, flood: 3.00, lat: -30.03, lon: -51.23 },
-  { id: 'cai', name: 'Rio Caí (S. S. do Caí)', cod: '87382000', feedUrl: 'https://nivelguaiba.com.br/sao-sebastiao-do-cai/feed/', level: null, alert: 7.00, flood: 10.00, lat: -29.58, lon: -51.37 },
-  { id: 'sinos', name: 'Rio dos Sinos (S. Leopoldo)', cod: '87398000', feedUrl: 'https://nivelguaiba.com.br/sao-leopoldo/feed/', level: null, alert: 4.30, flood: 4.50, lat: -29.76, lon: -51.14 },
-  { id: 'uruguai', name: 'Rio Uruguai (Uruguaiana)', cod: '77150000', feedUrl: 'https://niveluruguai.com.br/feed/', level: null, alert: 7.50, flood: 8.50, lat: -29.76, lon: -57.08 }
+  { id: 'guaiba', name: 'Guaíba (Cais Mauá)', cod: '87450004', feedUrl: 'https://nivelguaiba.com.br/feed', level: null, alert: 2.50, flood: 3.00, lat: -30.03, lon: -51.23 },
+  { id: 'cai', name: 'Rio Caí (S. S. do Caí)', cod: '87382000', feedUrl: 'https://nivelguaiba.com.br/sao-sebastiao-do-cai/feed', level: null, alert: 7.00, flood: 10.00, lat: -29.58, lon: -51.37 },
+  { id: 'sinos', name: 'Rio dos Sinos (S. Leopoldo)', cod: '87398000', feedUrl: 'https://nivelguaiba.com.br/sao-leopoldo/feed', level: null, alert: 4.30, flood: 4.50, lat: -29.76, lon: -51.14 },
+  { id: 'uruguai', name: 'Rio Uruguai (Uruguaiana)', cod: '77150000', feedUrl: 'https://niveluruguai.com.br/feed', level: null, alert: 7.50, flood: 8.50, lat: -29.76, lon: -57.08 }
 ];
 
 // ==========================================
@@ -67,20 +67,20 @@ const MapAutoTracker = ({ center, zoom }) => {
 };
 
 // ==========================================
-// 3. COMPONENTE: BACIAS HIDROGRÁFICAS
+// 3. COMPONENTE REDESENHADO: HIDROLOGIA (LEVE & TÁTICO)
 // ==========================================
 const HydrologyTerminal = ({ rivers, isSyncing }) => {
   if (isSyncing) {
     return (
       <div className="bg-[#0b1120]/90 backdrop-blur-xl rounded-2xl p-6 border border-slate-700 shadow-2xl h-full flex flex-col items-center justify-center">
         <Loader2 size={32} className="text-cyan-400 animate-spin mb-4" />
-        <span className="text-cyan-400 font-bold tracking-widest text-xs">SINCRONIZANDO FEEDS DE TELEMETRIA...</span>
+        <span className="text-cyan-400 font-bold tracking-widest text-xs">SINCRONIZANDO CONEXÃO SATÉLITE/WEB...</span>
       </div>
     );
   }
 
   return (
-    <div className="bg-[#0b1120]/90 backdrop-blur-xl rounded-2xl p-4 lg:p-6 border border-slate-700 shadow-2xl h-full overflow-y-auto custom-scrollbar flex flex-col">
+    <div className="bg-[#0b1120]/90 backdrop-blur-xl rounded-2xl p-4 lg:p-6 border border-slate-700 shadow-2xl h-full flex flex-col relative overflow-hidden">
       <div className="flex justify-between items-center mb-4 border-b border-slate-800 pb-3 shrink-0">
         <div>
           <div className="flex items-center gap-1 text-[10px] text-cyan-400 font-bold tracking-widest mb-1">
@@ -100,37 +100,37 @@ const HydrologyTerminal = ({ rivers, isSyncing }) => {
           let numColor = "text-cyan-400";
           
           if (isFlood) {
-            cardStyle = "bg-rose-950/20 border-rose-500/30";
+            cardStyle = "bg-rose-950/20 border-rose-500/30 shadow-[0_0_15px_rgba(244,63,94,0.1)]";
             numColor = "text-rose-400";
           } else if (isAlert) {
             cardStyle = "bg-amber-950/20 border-amber-500/30";
             numColor = "text-amber-400";
           } else if (isOffline) {
-            cardStyle = "bg-slate-900/30 border-slate-800";
+            cardStyle = "bg-slate-900/30 border-slate-800 border-dashed";
             numColor = "text-slate-600";
           }
 
           const pct = Math.min(((!isOffline ? river.level : 0) / (river.flood * 1.2)) * 100, 100);
 
           return (
-            <div key={river.id} className={`p-3 lg:p-4 rounded-xl border ${cardStyle} flex flex-col justify-between`}>
+            <div key={river.id} className={`p-4 rounded-xl border ${cardStyle} flex flex-col justify-between`}>
               <div className="flex justify-between items-start mb-3">
                 <span className={`text-xs font-bold ${isOffline ? 'text-slate-500' : 'text-slate-200'}`}>{river.name}</span>
                 {!isOffline && (
                   <span className={`text-[8px] px-1.5 py-0.5 rounded font-bold tracking-widest ${river.isFeed ? 'bg-cyan-500/10 text-cyan-500 border border-cyan-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'}`}>
-                    {river.isFeed ? 'FEED DA COMUNIDADE (SEMA)' : 'DADO OFICIAL (CPRM/ANA)'}
+                    {river.isFeed ? 'FEED DA COMUNIDADE' : 'SACE/ANA'}
                   </span>
                 )}
               </div>
               
               <div className="flex items-end gap-1 mb-2">
-                <span className={`text-3xl lg:text-4xl font-black leading-none tracking-tighter ${numColor}`}>
+                <span className={`text-4xl font-black leading-none tracking-tighter ${numColor}`}>
                   {isOffline ? '--' : river.level.toFixed(2)}
                 </span>
                 <span className={`text-xs font-bold mb-1 ${isOffline ? 'text-slate-600' : 'text-slate-500'}`}>m</span>
               </div>
 
-              <div className="w-full h-1 bg-slate-800/80 rounded-full mt-2 relative overflow-hidden">
+              <div className="w-full h-1.5 bg-slate-800/80 rounded-full mt-2 relative overflow-hidden">
                  {!isOffline && <div className={`absolute top-0 left-0 h-full transition-all duration-1000 ${isFlood ? 'bg-rose-500' : isAlert ? 'bg-amber-500' : 'bg-cyan-500'}`} style={{ width: `${pct}%` }}></div>}
               </div>
               
@@ -391,111 +391,102 @@ export default function App() {
       } catch (error) {}
     };
 
-    // A MÁGICA FINAL: CONSUMO DIRETO COM BLINDAGEM TRY/CATCH/FINALLY (IMPEDE O TRAVAMENTO)
+    // A ARMA DEFINITIVA: API RSS2JSON (Bypassa qualquer Cloudflare nativamente)
     const fetchRivers = async () => {
       setIsHydroSyncing(true); // Liga o loader
       
       try {
-        // Função utilitária para testar túneis em segurança
-        const safeFetchText = async (url) => {
-          const proxies = [
-            `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-            `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
-            `https://corsproxy.io/?${encodeURIComponent(url)}`
-          ];
-          for (const p of proxies) {
-            try {
-              const controller = new AbortController();
-              const timeoutId = setTimeout(() => controller.abort(), 6000); // 6s máx por proxy
-              const res = await fetch(p, { signal: controller.signal, cache: 'no-store' });
-              clearTimeout(timeoutId);
-              if (res.ok) {
-                const text = await res.text();
-                // Se cair na Cloudflare, pula para o próximo proxy
-                if (!text.includes('Cloudflare') && !text.includes('Just a moment')) {
-                  return text;
-                }
-              }
-            } catch (e) {
-              continue; // Ignora o erro e tenta o próximo
-            }
-          }
-          return null; // Se os 3 falharem, retorna vazio em segurança
-        };
-
         const updatedRivers = await Promise.all(INITIAL_RIVERS.map(async (rio) => {
-          try {
-            let nivelAtual = null;
-            let isFeed = false;
+          let nivelAtual = null;
+          let isFeed = false;
 
-            // TÁTICA 1: O Feed Nativo (Exato, direto, sem raspar HTML)
-            if (rio.feedUrl) {
-              const text = await safeFetchText(`${rio.feedUrl}?cb=${Date.now()}`);
-              if (text) {
-                // Regex super abrangente: Procura o número em metros dentro do arquivo do feed
-                const matches = [...text.matchAll(/([0-9]{1,2}[.,][0-9]{1,2})\s*m?/gi)];
-                for (const m of matches) {
-                  if (m[1]) {
-                    const num = parseFloat(m[1].replace(',', '.'));
-                    // Validação de segurança
-                    if (num > 0.01 && num < 35 && num !== rio.alert && num !== rio.flood) {
-                      nivelAtual = num.toFixed(2);
-                      isFeed = true;
-                      break;
+          // TÁTICA 1: Usando a API Profissional rss2json.com
+          // Ela entra no link de forma validada, converte o XML e passa ileso por firewalls
+          if (rio.feedUrl) {
+            try {
+              const urlConvertida = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rio.feedUrl)}`;
+              const res = await fetch(urlConvertida, { cache: 'no-store' });
+              
+              if (res.ok) {
+                const data = await res.json();
+                if (data.status === 'ok' && data.items && data.items.length > 0) {
+                  // O Feed traz os dados no Title e Description do último artigo
+                  const textContent = `${data.items[0].title} ${data.items[0].description}`.replace(/\s+/g, ' ');
+                  
+                  // Caçador de Regex refinado para texto limpo de JSON
+                  const matches = [...textContent.matchAll(/([0-9]{1,2}[.,][0-9]{1,2})\s*m?/gi)];
+                  
+                  for (const m of matches) {
+                    if (m[1]) {
+                      const num = parseFloat(m[1].replace(',', '.'));
+                      if (num > 0.01 && num < 35 && num !== rio.alert && num !== rio.flood) {
+                        nivelAtual = num.toFixed(2);
+                        isFeed = true;
+                        break;
+                      }
                     }
                   }
                 }
               }
+            } catch (e) {
+              console.error(`Falha no Feed do rio ${rio.name}`, e);
             }
+          }
 
-            // TÁTICA 2: CPRM SACE DIRETO VIA API (Se o Feed falhar ou não existir)
-            if (nivelAtual === null) {
-              const text = await safeFetchText(`https://sace.cprm.gov.br/api/dadosestacao/${rio.cod}`);
-              if (text) {
-                try {
-                  const dataSace = JSON.parse(text);
-                  if (Array.isArray(dataSace) && dataSace.length > 0) {
-                    for (let i = dataSace.length - 1; i >= 0; i--) {
-                      if (dataSace[i].nivel) {
-                        nivelAtual = (dataSace[i].nivel / 100).toFixed(2);
+          // TÁTICA 2: SACE/CPRM JSON VIA ALLORIGINS GET
+          if (nivelAtual === null) {
+            try {
+              const saceUrl = `https://api.allorigins.win/get?url=${encodeURIComponent('https://sace.cprm.gov.br/api/dadosestacao/' + rio.cod)}`;
+              const resSace = await fetch(saceUrl, { cache: 'no-store' });
+              if (resSace.ok) {
+                const dataSace = await resSace.json();
+                if (dataSace.contents) {
+                  const parsedSace = JSON.parse(dataSace.contents);
+                  if (Array.isArray(parsedSace) && parsedSace.length > 0) {
+                    for (let i = parsedSace.length - 1; i >= 0; i--) {
+                      if (parsedSace[i].nivel) {
+                        nivelAtual = (parsedSace[i].nivel / 100).toFixed(2);
                         isFeed = false;
                         break;
                       }
                     }
                   }
-                } catch(e) {} // Se não for JSON, ignora
+                }
               }
-            }
-
-            // TÁTICA 3: ANA GOVERNO XML (Último Suspiro)
-            if (nivelAtual === null) {
-              const text = await safeFetchText(`http://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosTempoReal?codEstacao=${rio.cod}`);
-              if (text && text.includes('<Nivel>')) {
-                 const matches = [...text.matchAll(/<Nivel>([0-9]+)<\/Nivel>/g)];
-                 for (let i = matches.length - 1; i >= 0; i--) {
-                    const num = parseFloat(matches[i][1]);
-                    if (!isNaN(num)) {
-                       nivelAtual = (num / 100).toFixed(2);
-                       isFeed = false;
-                       break;
-                    }
-                 }
-              }
-            }
-
-            return { ...rio, level: nivelAtual ? parseFloat(nivelAtual) : null, isFeed };
-
-          } catch (e) {
-            // Em caso de catástrofe com esse rio específico, retorna ele vazio para não quebrar os outros
-            return { ...rio, level: null, isFeed: false };
+            } catch(e) {}
           }
+
+          // TÁTICA 3: ANA GOVERNO XML (Fallback Final)
+          if (nivelAtual === null) {
+            try {
+              const anaUrl = `https://api.allorigins.win/get?url=${encodeURIComponent('http://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosTempoReal?codEstacao=' + rio.cod)}`;
+              const resAna = await fetch(anaUrl, { cache: 'no-store' });
+              if (resAna.ok) {
+                const dataAna = await resAna.json();
+                const text = dataAna.contents || '';
+                if (text && text.includes('<Nivel>')) {
+                   const matches = [...text.matchAll(/<Nivel>([0-9]+)<\/Nivel>/g)];
+                   for (let i = matches.length - 1; i >= 0; i--) {
+                      const num = parseFloat(matches[i][1]);
+                      if (!isNaN(num)) {
+                         nivelAtual = (num / 100).toFixed(2);
+                         isFeed = false;
+                         break;
+                      }
+                   }
+                }
+              }
+            } catch(e) {}
+          }
+
+          return { ...rio, level: nivelAtual ? parseFloat(nivelAtual) : null, isFeed };
         }));
         
         setRiverData(updatedRivers);
       } catch (error) {
-        console.error("Falha tática na hidrologia:", error);
+        console.error("Falha tática geral na hidrologia:", error);
       } finally {
-        // A TRAVA DE OURO: Aconteça o que acontecer, a tela de Sincronizando vai sumir!
+        // A TRAVA DE SEGURANÇA: Garante que o Loader Desligue
         setIsHydroSyncing(false); 
       }
     };
@@ -529,7 +520,17 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#020617] p-2 md:p-4 text-slate-200 font-sans flex flex-col gap-3 overflow-hidden h-screen" style={{ background: 'radial-gradient(circle at top right, #0f172a, #020617)' }}>
-      <style>{`.custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; } .custom-scrollbar::-webkit-scrollbar-track { background: transparent; } .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; } .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; } .leaflet-container { background-color: #020617 !important; border-radius: 1rem; cursor: crosshair !important; z-index: 10; } .leaflet-container img { max-width: none !important; max-height: none !important; margin: 0 !important; padding: 0 !important; } .dark-base-map { filter: invert(100%) hue-rotate(180deg) brightness(85%) contrast(110%) grayscale(40%); } .leaflet-tooltip { background: rgba(15, 23, 42, 0.95) !important; border: 1px solid rgba(255,255,255,0.1) !important; color: white !important; font-weight: bold; border-radius: 4px !important; backdrop-filter: blur(8px); padding: 4px 8px; font-size: 11px; }`}</style>
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; } 
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; } 
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; } 
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; } 
+        .leaflet-container { background-color: #020617 !important; border-radius: 1rem; cursor: crosshair !important; z-index: 10; } 
+        .leaflet-container img { max-width: none !important; max-height: none !important; margin: 0 !important; padding: 0 !important; } 
+        .dark-base-map { filter: invert(100%) hue-rotate(180deg) brightness(85%) contrast(110%) grayscale(40%); } 
+        .leaflet-tooltip { background: rgba(15, 23, 42, 0.95) !important; border: 1px solid rgba(255,255,255,0.1) !important; color: white !important; font-weight: bold; border-radius: 4px !important; backdrop-filter: blur(8px); padding: 4px 8px; font-size: 11px; }
+        * { scrollbar-width: thin; scrollbar-color: #334155 transparent; }
+      `}</style>
 
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 w-full shrink-0">
         <div>
