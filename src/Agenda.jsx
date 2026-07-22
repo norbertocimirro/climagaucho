@@ -350,14 +350,12 @@ export default function Agenda() {
       setIsHydroSyncing(true);
       
       try {
+        // IDÊNTICO AO SEU APP.JSX ORIGINAL PARA FUNCIONAR LOCALMENTE E NA VERCEL
         const getFeedItems = async (url) => {
-          // O SISTEMA ROBUSTO ORIGINAL DO SEU APP.JSX!
           const proxies = [
-            `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
             `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-            `https://corsproxy.io/?${encodeURIComponent(url)}`
+            `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
           ];
-
           for (const p of proxies) {
             try {
               const res = await fetch(p, { cache: 'no-store' });
@@ -366,12 +364,10 @@ export default function Agenda() {
                 let data;
                 try { data = JSON.parse(text); } catch (e) { continue; }
                 
-                if (data && data.items && Array.isArray(data.items)) return data.items;
-                if (data && data.contents) {
+                if (data.items) return data.items;
+                if (data.contents) {
                    const innerData = JSON.parse(data.contents);
-                   if (innerData && innerData.items && Array.isArray(innerData.items)) {
-                     return innerData.items;
-                   }
+                   if (innerData.items) return innerData.items;
                 }
               }
             } catch(e) {}
@@ -388,12 +384,15 @@ export default function Agenda() {
           let nivelAtual = null;
           let isFeed = false;
 
-          // TÁTICA 1: JSON FEED
+          // TÁTICA 1: FEED JSON
           if (rio.feedItemUrl && allFeedItems.length > 0) {
             const item = allFeedItems.find(i => i.url === rio.feedItemUrl || (i.id && i.id.startsWith(rio.feedItemUrl)));
             if (item) {
               let match = item.title?.match(/([0-9]+[.,][0-9]+)\s*m/i);
+              
+              // ADICIONADO: Pesquisa também por "metros" caso não exista o "m"
               if (!match) match = item.content_text?.match(/([0-9]+[.,][0-9]+)\s*(?:m|metros)/i);
+              
               if (match && match[1]) {
                 nivelAtual = parseFloat(match[1].replace(',', '.'));
                 isFeed = true;
