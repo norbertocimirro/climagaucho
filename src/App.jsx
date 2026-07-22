@@ -17,13 +17,13 @@ const BASES = [
   { id: 'SBBG', name: 'BAGÉ', lat: -31.33, lon: -54.11 }
 ];
 
-// Ouro Tático: Links Diretos de Feed JSON/RSS (Leitura Pura)
+// URLs exatas que batem com o "url" dentro do seu Feed JSON
 const INITIAL_RIVERS = [
-  { id: 'taquari', name: 'Rio Taquari (Estrela)', cod: '86695000', feedUrl: null, level: null, alert: 15.00, flood: 19.00, lat: -29.50, lon: -51.96 },
-  { id: 'guaiba', name: 'Guaíba (Cais Mauá)', cod: '87450004', feedUrl: 'https://nivelguaiba.com.br/feed', level: null, alert: 2.50, flood: 3.00, lat: -30.03, lon: -51.23 },
-  { id: 'cai', name: 'Rio Caí (S. S. do Caí)', cod: '87382000', feedUrl: 'https://nivelguaiba.com.br/sao-sebastiao-do-cai/feed', level: null, alert: 7.00, flood: 10.00, lat: -29.58, lon: -51.37 },
-  { id: 'sinos', name: 'Rio dos Sinos (S. Leopoldo)', cod: '87398000', feedUrl: 'https://nivelguaiba.com.br/sao-leopoldo/feed', level: null, alert: 4.30, flood: 4.50, lat: -29.76, lon: -51.14 },
-  { id: 'uruguai', name: 'Rio Uruguai (Uruguaiana)', cod: '77150000', feedUrl: 'https://niveluruguai.com.br/feed', level: null, alert: 7.50, flood: 8.50, lat: -29.76, lon: -57.08 }
+  { id: 'taquari', name: 'Rio Taquari (Lajeado)', cod: '86695000', feedItemUrl: 'https://nivelguaiba.com.br/lajeado', level: null, alert: 15.00, flood: 19.00, lat: -29.50, lon: -51.96 },
+  { id: 'guaiba', name: 'Guaíba (Cais Mauá)', cod: '87450004', feedItemUrl: 'https://nivelguaiba.com.br/', level: null, alert: 2.50, flood: 3.00, lat: -30.03, lon: -51.23 },
+  { id: 'cai', name: 'Rio Caí (S. S. do Caí)', cod: '87382000', feedItemUrl: 'https://nivelguaiba.com.br/saosebastiaodocai', level: null, alert: 7.00, flood: 10.00, lat: -29.58, lon: -51.37 },
+  { id: 'sinos', name: 'Rio dos Sinos (S. Leopoldo)', cod: '87398000', feedItemUrl: 'https://nivelguaiba.com.br/saoleopoldo', level: null, alert: 4.30, flood: 4.50, lat: -29.76, lon: -51.14 },
+  { id: 'uruguai', name: 'Rio Uruguai (Uruguaiana)', cod: '77150000', feedItemUrl: 'https://niveluruguai.com.br/', level: null, alert: 7.50, flood: 8.50, lat: -29.76, lon: -57.08 }
 ];
 
 // ==========================================
@@ -67,14 +67,14 @@ const MapAutoTracker = ({ center, zoom }) => {
 };
 
 // ==========================================
-// 3. COMPONENTE REDESENHADO: HIDROLOGIA (LEVE & TÁTICO)
+// 3. COMPONENTE: HIDROLOGIA (GLASS COCKPIT)
 // ==========================================
 const HydrologyTerminal = ({ rivers, isSyncing }) => {
   if (isSyncing) {
     return (
       <div className="bg-[#0b1120]/90 backdrop-blur-xl rounded-2xl p-6 border border-slate-700 shadow-2xl h-full flex flex-col items-center justify-center">
         <Loader2 size={32} className="text-cyan-400 animate-spin mb-4" />
-        <span className="text-cyan-400 font-bold tracking-widest text-xs">LENDO DADOS DO FEED...</span>
+        <span className="text-cyan-400 font-bold tracking-widest text-xs">PROCESSANDO JSON TÁTICO...</span>
       </div>
     );
   }
@@ -84,7 +84,7 @@ const HydrologyTerminal = ({ rivers, isSyncing }) => {
       <div className="flex justify-between items-center mb-4 border-b border-slate-800 pb-3 shrink-0">
         <div>
           <div className="flex items-center gap-1 text-[10px] text-cyan-400 font-bold tracking-widest mb-1">
-            <ActivitySquare size={10} /> TELEMETRIA NATIVA (FEEDS JSON)
+            <ActivitySquare size={10} /> TELEMETRIA: FEED JSON DIRETO
           </div>
           <h2 className="text-xl lg:text-2xl font-black text-white">REDE HIDROLÓGICA</h2>
         </div>
@@ -118,7 +118,7 @@ const HydrologyTerminal = ({ rivers, isSyncing }) => {
                 <span className={`text-xs font-bold ${isOffline ? 'text-slate-500' : 'text-slate-200'}`}>{river.name}</span>
                 {!isOffline && (
                   <span className={`text-[8px] px-1.5 py-0.5 rounded font-bold tracking-widest ${river.isFeed ? 'bg-cyan-500/10 text-cyan-500 border border-cyan-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'}`}>
-                    {river.isFeed ? 'FEED DA COMUNIDADE' : 'SACE/ANA OFICIAL'}
+                    {river.isFeed ? 'FEED SEMA / PRATICAGEM' : 'SACE / ANA OFICIAL'}
                   </span>
                 )}
               </div>
@@ -391,143 +391,92 @@ export default function App() {
       } catch (error) {}
     };
 
-    // A MÁGICA DEFINITIVA: LENDO O FEED JSON COMO ELE É
+    // A MÁGICA: ABRE A CAIXA E PEGA O OURO (Extração JSON Nativa)
     const fetchRivers = async () => {
       setIsHydroSyncing(true);
       
-      const proxies = [
-        (url) => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
-        (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
-        (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`
-      ];
-
       try {
+        // Função para garantir que lemos o conteúdo, independente de como o Proxy empacotou
+        const getFeedItems = async (url) => {
+          const proxies = [
+            `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+            `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
+          ];
+          for (const p of proxies) {
+            try {
+              const res = await fetch(p, { cache: 'no-store' });
+              if (res.ok) {
+                const text = await res.text();
+                // Verifica se foi empacotado no AllOrigins /get por engano
+                let data;
+                try { data = JSON.parse(text); } catch (e) { continue; }
+                
+                if (data.items) return data.items;
+                // Abre a caixa se o JSON foi passado como string na prop contents
+                if (data.contents) {
+                   const innerData = JSON.parse(data.contents);
+                   if (innerData.items) return innerData.items;
+                }
+              }
+            } catch(e) {}
+          }
+          return [];
+        };
+
+        const cacheBuster = `?cb=${Date.now()}`;
+        const itemsGuaiba = await getFeedItems('https://nivelguaiba.com.br/feed' + cacheBuster);
+        const itemsUruguai = await getFeedItems('https://niveluruguai.com.br/feed' + cacheBuster);
+        const allFeedItems = [...itemsGuaiba, ...itemsUruguai];
+
         const updatedRivers = await Promise.all(INITIAL_RIVERS.map(async (rio) => {
           let nivelAtual = null;
           let isFeed = false;
 
-          // TÁTICA 1: LER DIRETAMENTE O TEXTO DO SEU FEED JSON/XML
-          if (rio.feedUrl) {
-            for (const proxy of proxies) {
-              try {
-                const urlBuster = `${rio.feedUrl}${rio.feedUrl.includes('?') ? '&' : '?'}cb=${Date.now()}`;
-                const res = await fetch(proxy(urlBuster), { cache: 'no-store' });
-                
-                if (res.ok) {
-                  let rawText = "";
-                  
-                  // Se for AllOrigins, o dado vem dentro de "contents"
-                  if (proxy("").includes("allorigins")) {
-                    const json = await res.json();
-                    rawText = json.contents || JSON.stringify(json);
-                  } else {
-                    rawText = await res.text();
-                  }
+          // TÁTICA 1: O NÚMERO EXATO DO JSON QUE VOCÊ ME MANDOU!
+          if (rio.feedItemUrl && allFeedItems.length > 0) {
+            // Acha o objeto exato da cidade usando a URL
+            const item = allFeedItems.find(i => i.url === rio.feedItemUrl);
+            
+            if (item) {
+              // Procura o número no title (ex: "Porto Alegre: 0,67m") ou no content_text
+              let match = null;
+              if (item.title) match = item.title.match(/([0-9]+[.,][0-9]+)\s*m/i);
+              if (!match && item.content_text) match = item.content_text.match(/([0-9]+[.,][0-9]+)\s*m/i);
 
-                  // O Extrator Universal de JSON (Puxa qualquer número de 0.01 a 25.00 que esteja no arquivo)
-                  if (rawText && !rawText.includes('Cloudflare') && !rawText.includes('Just a moment')) {
-                    const regexList = [
-                      /"(?:nivel|level|valor|cota|atual)"\s*:\s*"?([0-9]{1,2}[.,][0-9]{1,2})"?/gi,
-                      /"(?:title|description|text|content_text|content)"\s*:\s*"[^"]*?([0-9]{1,2}[.,][0-9]{1,2})\s*m?[^"]*"/gi,
-                      /<(?:nivel|level|cota|atual)>([0-9]{1,2}[.,][0-9]{1,2})<\//gi,
-                      /<(?:title|description)>[^<]*?([0-9]{1,2}[.,][0-9]{1,2})\s*m?[^<]*?<\//gi,
-                      /([0-9]{1,2}[.,][0-9]{1,2})\s*m\b/gi,
-                      /:\s*"?([0-9]{1,2}[.,][0-9]{1,2})"?/gi // Varredura bruta em JSON
-                    ];
+              if (match && match[1]) {
+                nivelAtual = parseFloat(match[1].replace(',', '.'));
+                isFeed = true;
+              }
+            }
+          }
 
-                    for (const rx of regexList) {
-                      const matches = [...rawText.matchAll(rx)];
-                      for (const m of matches) {
-                        if (m[1]) {
-                          const num = parseFloat(m[1].replace(',', '.'));
-                          // Filtro que impede que o 2.50 ou 3.00 seja lido como água
-                          if (num > 0.01 && num < 25 && num !== rio.alert && num !== rio.flood) {
-                            nivelAtual = num.toFixed(2);
-                            isFeed = true;
-                            break;
-                          }
-                        }
-                      }
-                      if (nivelAtual !== null) break;
+          // TÁTICA 2: CPRM/SACE (Plano B Governamental - Funciona liso caso a comunidade caia)
+          if (nivelAtual === null) {
+            try {
+              const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent('https://sace.cprm.gov.br/api/dadosestacao/' + rio.cod)}`);
+              if (res.ok) {
+                const data = await res.json();
+                if (Array.isArray(data) && data.length > 0) {
+                  for (let i = data.length - 1; i >= 0; i--) {
+                    if (data[i].nivel) {
+                      nivelAtual = data[i].nivel / 100;
+                      isFeed = false;
+                      break;
                     }
                   }
                 }
-              } catch (e) {}
-              if (nivelAtual !== null) break; // Sucesso, sai do loop de proxies
-            }
+              }
+            } catch(e) {}
           }
 
-          // TÁTICA 2: SACE/CPRM (Se o Feed cair)
-          if (nivelAtual === null && rio.cod) {
-            const saceUrl = `https://sace.cprm.gov.br/api/dadosestacao/${rio.cod}`;
-            for (const proxy of proxies) {
-              try {
-                const resSace = await fetch(proxy(saceUrl), { cache: 'no-store' });
-                if (resSace.ok) {
-                  let rawSace = "";
-                  if (proxy("").includes("allorigins")) {
-                    const json = await resSace.json();
-                    rawSace = json.contents;
-                  } else {
-                    rawSace = await resSace.text();
-                  }
-                  
-                  const parsedSace = JSON.parse(rawSace);
-                  if (Array.isArray(parsedSace) && parsedSace.length > 0) {
-                    for (let i = parsedSace.length - 1; i >= 0; i--) {
-                      if (parsedSace[i].nivel) {
-                        nivelAtual = (parsedSace[i].nivel / 100).toFixed(2);
-                        isFeed = false;
-                        break;
-                      }
-                    }
-                  }
-                }
-              } catch(e) {}
-              if (nivelAtual !== null) break;
-            }
-          }
-
-          // TÁTICA 3: ANA GOVERNO XML (Se o SACE cair)
-          if (nivelAtual === null && rio.cod) {
-            const anaUrl = `http://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosTempoReal?codEstacao=${rio.cod}`;
-            for (const proxy of proxies) {
-              try {
-                const resAna = await fetch(proxy(anaUrl), { cache: 'no-store' });
-                if (resAna.ok) {
-                  let rawAna = "";
-                  if (proxy("").includes("allorigins")) {
-                    const json = await resAna.json();
-                    rawAna = json.contents;
-                  } else {
-                    rawAna = await resAna.text();
-                  }
-                  
-                  if (rawAna && rawAna.includes('<Nivel>')) {
-                     const matches = [...rawAna.matchAll(/<Nivel>([0-9]+)<\/Nivel>/g)];
-                     for (let i = matches.length - 1; i >= 0; i--) {
-                        const num = parseFloat(matches[i][1]);
-                        if (!isNaN(num)) {
-                           nivelAtual = (num / 100).toFixed(2);
-                           isFeed = false;
-                           break;
-                        }
-                     }
-                  }
-                }
-              } catch(e) {}
-              if (nivelAtual !== null) break;
-            }
-          }
-
-          return { ...rio, level: nivelAtual ? parseFloat(nivelAtual) : null, isFeed };
+          return { ...rio, level: nivelAtual !== null ? parseFloat(nivelAtual) : null, isFeed };
         }));
         
         setRiverData(updatedRivers);
       } catch (error) {
         console.error("Falha tática na hidrologia:", error);
       } finally {
-        setIsHydroSyncing(false); // Sempre desliga o Loader
+        setIsHydroSyncing(false); // Destrava a tela para sempre mostrar o Glass Cockpit
       }
     };
 
@@ -542,7 +491,6 @@ export default function App() {
     return () => clearInterval(loop);
   }, [radarFrames]);
 
-  // Loading global inicial
   if (isInitializing) {
     return (
       <div className="min-h-screen bg-[#020617] flex items-center justify-center">
