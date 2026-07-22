@@ -44,30 +44,30 @@ const getFlightCategory = (visibility, windGust) => {
 };
 
 // ==========================================
-// 3. COMPONENTES DE DADOS (AGORA EM BARRA LATERAL)
+// 3. COMPONENTES DE DADOS (BARRA LATERAL)
 // ==========================================
 const HydrologyTerminal = ({ rivers, isSyncing }) => {
   if (isSyncing) {
     return (
       <div className="bg-[#0b1120]/90 backdrop-blur-xl rounded-2xl p-6 border border-slate-700 shadow-2xl h-full flex flex-col items-center justify-center">
         <Loader2 size={32} className="text-cyan-400 animate-spin mb-4" />
-        <span className="text-cyan-400 font-bold tracking-widest text-xs">PROCESSANDO DADOS HIDROLÓGICOS...</span>
+        <span className="text-cyan-400 font-bold tracking-widest text-xs">PROCESSANDO DADOS...</span>
       </div>
     );
   }
 
   return (
-    <div className="bg-[#0b1120]/90 backdrop-blur-xl rounded-2xl p-4 lg:p-6 border border-slate-700 shadow-2xl h-full flex flex-col relative overflow-hidden">
-      <div className="flex justify-between items-center mb-4 border-b border-slate-800 pb-3 shrink-0">
+    <div className="bg-[#0b1120]/90 backdrop-blur-xl rounded-2xl p-4 lg:p-5 border border-slate-700 shadow-2xl h-full flex flex-col relative overflow-hidden">
+      <div className="flex justify-between items-center mb-3 border-b border-slate-800 pb-3 shrink-0">
         <div>
           <div className="flex items-center gap-1 text-[10px] text-cyan-400 font-bold tracking-widest mb-1">
-            <ActivitySquare size={10} /> TELEMETRIA: FEED DIRETO
+            <ActivitySquare size={10} /> TELEMETRIA EM TEMPO REAL
           </div>
-          <h2 className="text-xl lg:text-2xl font-black text-white">REDE HIDROLÓGICA</h2>
+          <h2 className="text-xl font-black text-white">REDE HIDROLÓGICA</h2>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 overflow-y-auto custom-scrollbar pr-2 pb-2">
+      <div className="flex flex-col gap-3 overflow-y-auto custom-scrollbar pr-2 pb-2 h-full">
         {rivers.map(river => {
           const isOffline = typeof river.level !== 'number';
           const isFlood = !isOffline && river.level >= river.flood;
@@ -77,7 +77,7 @@ const HydrologyTerminal = ({ rivers, isSyncing }) => {
           let numColor = "text-cyan-400";
           
           if (isFlood) {
-            cardStyle = "bg-rose-950/20 border-rose-500/30 shadow-[0_0_15px_rgba(244,63,94,0.1)]";
+            cardStyle = "bg-rose-950/20 border-rose-500/30 shadow-[0_0_10px_rgba(244,63,94,0.1)]";
             numColor = "text-rose-400";
           } else if (isAlert) {
             cardStyle = "bg-amber-950/20 border-amber-500/30";
@@ -90,20 +90,20 @@ const HydrologyTerminal = ({ rivers, isSyncing }) => {
           const pct = Math.min(((!isOffline ? river.level : 0) / (river.flood * 1.2)) * 100, 100);
 
           return (
-            <div key={river.id} className={`p-4 rounded-xl border ${cardStyle} flex flex-col justify-between`}>
-              <div className="flex justify-between items-start mb-3">
+            <div key={river.id} className={`p-3 rounded-xl border ${cardStyle} flex flex-col justify-between shrink-0`}>
+              <div className="flex justify-between items-start mb-2">
                 <span className={`text-sm font-bold ${isOffline ? 'text-slate-500' : 'text-slate-200'}`}>{river.name}</span>
               </div>
-              <div className="flex items-end gap-1 mb-2">
-                <span className={`text-4xl font-black leading-none tracking-tighter ${numColor}`}>
+              <div className="flex items-end gap-1 mb-1">
+                <span className={`text-3xl font-black leading-none tracking-tighter ${numColor}`}>
                   {isOffline ? '--' : river.level.toFixed(2)}
                 </span>
-                <span className={`text-xs font-bold mb-1 ${isOffline ? 'text-slate-600' : 'text-slate-500'}`}>m</span>
+                <span className={`text-[10px] font-bold mb-1 ${isOffline ? 'text-slate-600' : 'text-slate-500'}`}>m</span>
               </div>
               <div className="w-full h-1.5 bg-slate-800/80 rounded-full mt-2 relative overflow-hidden">
                  {!isOffline && <div className={`absolute top-0 left-0 h-full transition-all duration-1000 ${isFlood ? 'bg-rose-500' : isAlert ? 'bg-amber-500' : 'bg-cyan-500'}`} style={{ width: `${pct}%` }}></div>}
               </div>
-              <div className="flex justify-between text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-2">
+              <div className="flex justify-between text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-2">
                 <span>Alerta: {river.alert}m</span>
                 <span>Inundação: {river.flood}m</span>
               </div>
@@ -190,63 +190,81 @@ const StationTerminal = ({ data }) => {
   const flightData = getFlightCategory(data.current.visibility, data.current.gusts);
 
   return (
-    <div className="bg-[#0b1120]/90 backdrop-blur-xl rounded-2xl p-4 lg:p-5 border border-slate-700 shadow-2xl h-full overflow-y-auto custom-scrollbar relative">
+    <div className="bg-[#0b1120]/90 backdrop-blur-xl rounded-2xl p-4 border border-slate-700 shadow-2xl h-full flex flex-col relative overflow-hidden">
       <div className={`absolute top-0 right-0 w-32 h-32 blur-[80px] rounded-full opacity-20 pointer-events-none ${flightData.rule === 'VOO RESTRITO' ? 'bg-rose-500' : flightData.rule === 'ATENÇÃO' ? 'bg-amber-500' : 'bg-cyan-500'}`}></div>
 
-      <div className="flex flex-col justify-between items-start gap-2 border-b border-slate-700/50 pb-3 mb-4">
+      <div className="flex flex-col justify-between items-start gap-1 border-b border-slate-700/50 pb-2 mb-3 shrink-0">
         <div>
           <div className="flex items-center gap-1 text-[9px] text-cyan-500 font-bold tracking-widest mb-1"><Crosshair size={10} /> DADOS CLIMÁTICOS</div>
-          <h2 className="text-xl lg:text-2xl font-black text-white">{data.name}</h2>
+          <h2 className="text-lg font-black text-white">{data.name}</h2>
         </div>
-        <div className="flex flex-col items-start gap-1 w-full">
-          <span className={`px-2 py-1 rounded text-[10px] font-bold border w-max ${flightData.color} tracking-widest shadow-lg`}>{flightData.rule}</span>
+        <div className="flex flex-col items-start gap-1 w-full mt-1">
+          <span className={`px-2 py-0.5 rounded text-[9px] font-bold border w-max ${flightData.color} tracking-widest shadow-lg`}>{flightData.rule}</span>
         </div>
       </div>
 
-      <div className="flex items-center justify-between pb-4 border-b border-slate-800/50 mb-4">
-        <div className="flex items-center gap-4">
+      <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 pb-2">
+        <div className="flex items-center gap-4 pb-3 border-b border-slate-800/50 mb-3">
           {getWeatherIcon(data.current.code, data.current.isDay)}
           <div>
-            <h1 className="text-5xl lg:text-6xl font-black text-white tracking-tighter leading-none">{data.current.temp}°</h1>
-            <span className="text-xs text-slate-400 font-medium">Sensação: {data.current.feels}°C</span>
+            <h1 className="text-5xl font-black text-white tracking-tighter leading-none">{data.current.temp}°</h1>
+            <span className="text-[10px] text-slate-400 font-medium">Sensação: {data.current.feels}°C</span>
           </div>
         </div>
-      </div>
 
-      <div className="grid grid-cols-2 gap-2 mb-4">
-        <div className="bg-slate-900/80 p-3 rounded-lg border border-slate-700/50">
-          <div className="text-[10px] text-slate-400 font-bold uppercase"><Compass size={12} className="inline mr-1"/>Vento</div>
-          <div className="text-sm font-bold text-white mt-1">{data.current.windSpd} km/h</div>
+        <div className="grid grid-cols-2 gap-2 mb-4">
+          <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-700/50">
+            <div className="text-[9px] text-slate-400 font-bold uppercase"><Compass size={12} className="inline mr-1"/>Vento</div>
+            <div className="text-xs font-bold text-white mt-1">{data.current.windSpd} km/h</div>
+          </div>
+          <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-700/50">
+            <div className="text-[9px] text-rose-400 font-bold uppercase"><Wind size={12} className="inline mr-1"/>Rajadas</div>
+            <div className="text-xs font-bold text-rose-400 mt-1">{data.current.gusts} km/h</div>
+          </div>
+          <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-700/50">
+            <div className="text-[9px] text-slate-400 font-bold uppercase"><Eye size={12} className="inline mr-1"/>Visib.</div>
+            <div className="text-xs font-bold text-white mt-1">{data.current.visibility} m</div>
+          </div>
+          <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-700/50">
+            <div className="text-[9px] text-slate-400 font-bold uppercase"><Gauge size={12} className="inline mr-1"/>Pressão</div>
+            <div className="text-xs font-bold text-white mt-1">{data.current.pressure} hPa</div>
+          </div>
         </div>
-        <div className="bg-slate-900/80 p-3 rounded-lg border border-slate-700/50">
-          <div className="text-[10px] text-rose-400 font-bold uppercase"><Wind size={12} className="inline mr-1"/>Rajadas</div>
-          <div className="text-sm font-bold text-rose-400 mt-1">{data.current.gusts} km/h</div>
-        </div>
-        <div className="bg-slate-900/80 p-3 rounded-lg border border-slate-700/50">
-          <div className="text-[10px] text-slate-400 font-bold uppercase"><Eye size={12} className="inline mr-1"/>Visibilidade</div>
-          <div className="text-sm font-bold text-white mt-1">{data.current.visibility} m</div>
-        </div>
-        <div className="bg-slate-900/80 p-3 rounded-lg border border-slate-700/50">
-          <div className="text-[10px] text-slate-400 font-bold uppercase"><Gauge size={12} className="inline mr-1"/>Pressão</div>
-          <div className="text-sm font-bold text-white mt-1">{data.current.pressure} hPa</div>
-        </div>
-      </div>
 
-      <div className="mt-4 p-4 border border-slate-700/50 bg-slate-900/40 rounded-xl">
-        <div className="text-[10px] text-amber-400 font-bold tracking-widest mb-3 flex items-center gap-2">
-          <ShieldAlert size={12}/> PREVISÃO (7 DIAS)
+        {/* BLOCO 6 HORAS RESTAURADO */}
+        <div className="mb-4 p-3 border border-slate-700/50 bg-slate-900/40 rounded-xl">
+          <div className="text-[9px] text-cyan-400 font-bold tracking-widest mb-3">PRECIPITAÇÃO (6 HORAS)</div>
+          <div className="flex justify-between items-end gap-1">
+            {data.hourly.map((h, i) => (
+              <div key={i} className="flex flex-col items-center flex-1">
+                <span className="text-[9px] font-bold text-slate-400 mb-1">{h.time}</span>
+                <div className="transform scale-50 -my-2">{getWeatherIcon(h.code, 1)}</div>
+                <div className="w-full bg-slate-800 rounded-sm overflow-hidden h-10 relative flex items-end mt-1">
+                  <div style={{ height: `${Math.min((h.precip/10)*100, 100)}%` }} className="w-full bg-gradient-to-t from-blue-600 to-cyan-400 rounded-t-sm"></div>
+                </div>
+                <span className="text-[9px] font-bold text-cyan-300 mt-1">{h.precip} <span className="text-[7px]">mm</span></span>
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="flex flex-col gap-2 overflow-y-auto">
-          {data.forecast.map((day, idx) => (
-            <div key={idx} className="flex justify-between items-center p-2 bg-slate-900/80 rounded-lg border border-slate-800">
-              <span className={`text-xs font-black tracking-wider w-12 ${idx === 0 ? 'text-amber-400' : 'text-slate-300'}`}>{day.dayName}</span>
-              <div className="transform scale-75">{getWeatherIcon(day.code, 1)}</div>
-              <span className="text-xs font-bold text-slate-400">{day.max}° <span className="text-slate-600">/ {day.min}°</span></span>
-              <span className={`text-[10px] font-bold px-2 py-1 rounded border ${day.rain > 15 ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' : day.rain > 0 ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-slate-800 text-slate-500 border-transparent'}`}>
-                {day.rain > 0 ? `${day.rain.toFixed(1)} mm` : '0 mm'}
-              </span>
-            </div>
-          ))}
+
+        {/* BLOCO 7 DIAS */}
+        <div className="p-3 border border-slate-700/50 bg-slate-900/40 rounded-xl">
+          <div className="text-[9px] text-amber-400 font-bold tracking-widest mb-3 flex items-center gap-2">
+            <ShieldAlert size={12}/> PREVISÃO (7 DIAS)
+          </div>
+          <div className="flex flex-col gap-1.5">
+            {data.forecast.map((day, idx) => (
+              <div key={idx} className="flex justify-between items-center p-1.5 bg-slate-900/80 rounded-lg border border-slate-800">
+                <span className={`text-[10px] font-black tracking-wider w-10 ${idx === 0 ? 'text-amber-400' : 'text-slate-300'}`}>{day.dayName}</span>
+                <div className="transform scale-50 -my-2">{getWeatherIcon(day.code, 1)}</div>
+                <span className="text-[10px] font-bold text-slate-400">{day.max}° <span className="text-slate-600">/ {day.min}°</span></span>
+                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${day.rain > 15 ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' : day.rain > 0 ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-slate-800 text-slate-500 border-transparent'}`}>
+                  {day.rain > 0 ? `${day.rain.toFixed(1)} mm` : '0 mm'}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
@@ -273,6 +291,21 @@ export default function Agenda() {
           const res = await fetch(url);
           const json = await res.json();
 
+          // RESTAURADO: Coleta das próximas 6 horas
+          let hourlyForecast = [];
+          const currentHourIdx = new Date().getHours();
+          for (let i = 1; i <= 6; i++) {
+            let idx = currentHourIdx + i;
+            if (idx < json.hourly.time.length) {
+              hourlyForecast.push({
+                time: json.hourly.time[idx].split("T")[1],
+                temp: Math.round(json.hourly.temperature_2m[idx]),
+                code: json.hourly.weather_code[idx],
+                precip: json.hourly.precipitation[idx]
+              });
+            }
+          }
+
           let daysForecast = [];
           for (let i = 0; i < 7; i++) {
             const dateObj = new Date(json.daily.time[i] + "T12:00:00");
@@ -294,6 +327,7 @@ export default function Agenda() {
               windSpd: Math.round(json.current.wind_speed_10m), windDir: json.current.wind_direction_10m,
               gusts: Math.round(json.current.wind_gusts_10m || json.current.wind_speed_10m)
             },
+            hourly: hourlyForecast,
             forecast: daysForecast
           };
         }));
@@ -313,8 +347,12 @@ export default function Agenda() {
     const fetchRivers = async () => {
       setIsHydroSyncing(true);
       try {
+        // RESTAURADO: Buscador robusto anti-bloqueio com proxies alternativos
         const getFeedItems = async (url) => {
-          const proxies = [`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`];
+          const proxies = [
+            `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+            `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
+          ];
           for (const p of proxies) {
             try {
               const res = await fetch(p, { cache: 'no-store' });
@@ -323,23 +361,72 @@ export default function Agenda() {
                 let data;
                 try { data = JSON.parse(text); } catch (e) { continue; }
                 if (data.items) return data.items;
+                if (data.contents) {
+                   const innerData = JSON.parse(data.contents);
+                   if (innerData.items) return innerData.items;
+                }
               }
             } catch(e) {}
           }
           return [];
         };
 
-        const allFeedItems = [...await getFeedItems('https://nivelguaiba.com.br/feed'), ...await getFeedItems('https://niveluruguai.com.br/feed')];
+        const cacheBuster = `?cb=${Date.now()}`;
+        const itemsGuaiba = await getFeedItems('https://nivelguaiba.com.br/feed' + cacheBuster);
+        const itemsUruguai = await getFeedItems('https://niveluruguai.com.br/feed' + cacheBuster);
+        const allFeedItems = [...itemsGuaiba, ...itemsUruguai];
 
         const updatedRivers = await Promise.all(INITIAL_RIVERS.map(async (rio) => {
           let nivelAtual = null;
+
+          // TÁTICA 1: FEED
           if (rio.feedItemUrl && allFeedItems.length > 0) {
             const item = allFeedItems.find(i => i.url === rio.feedItemUrl);
             if (item) {
-              let match = (item.title || item.content_text)?.match(/([0-9]+[.,][0-9]+)\s*m/i);
-              if (match && match[1]) nivelAtual = parseFloat(match[1].replace(',', '.'));
+              let match = null;
+              if (item.title) match = item.title.match(/([0-9]+[.,][0-9]+)\s*m/i);
+              if (!match && item.content_text) match = item.content_text.match(/([0-9]+[.,][0-9]+)\s*m/i);
+              if (match && match[1]) {
+                nivelAtual = parseFloat(match[1].replace(',', '.'));
+              }
             }
           }
+
+          // TÁTICA 2: RESTAURAÇÃO DO BACKUP SACE/CPRM
+          if (nivelAtual === null) {
+            try {
+              const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent('https://sace.cprm.gov.br/api/dadosestacao/' + rio.cod)}`);
+              if (res.ok) {
+                const data = await res.json();
+                if (Array.isArray(data) && data.length > 0) {
+                  for (let i = data.length - 1; i >= 0; i--) {
+                    if (data[i].nivel) {
+                      nivelAtual = data[i].nivel / 100;
+                      break;
+                    }
+                  }
+                }
+              }
+            } catch(e) {}
+          }
+
+          // TÁTICA 3: RESTAURAÇÃO DO BACKUP ANA
+          if (nivelAtual === null) {
+            try {
+              const url = `https://api.allorigins.win/get?url=${encodeURIComponent('http://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosTempoReal?codEstacao=' + rio.cod)}`;
+              const res = await fetch(url, { cache: 'no-store' });
+              if (res.ok) {
+                const data = await res.json();
+                if (data.contents && data.contents.includes('<Nivel>')) {
+                  const match = data.contents.match(/<Nivel>([0-9]+)<\/Nivel>/);
+                  if (match && match[1]) {
+                    nivelAtual = parseFloat(match[1]) / 100;
+                  }
+                }
+              }
+            } catch(e) {}
+          }
+
           return { ...rio, level: nivelAtual !== null ? parseFloat(nivelAtual) : null };
         }));
         setRiverData(updatedRivers);
@@ -369,9 +456,9 @@ export default function Agenda() {
   const statusColors = { RED: "bg-rose-500/10 border-rose-500/40 text-rose-400", YELLOW: "bg-amber-500/10 border-amber-500/40 text-amber-400", GREEN: "bg-emerald-500/10 border-emerald-500/40 text-emerald-400" };
 
   return (
-    <div className="min-h-screen bg-[#020617] p-2 md:p-4 text-slate-200 font-sans flex flex-col gap-3 overflow-hidden h-screen" style={{ background: 'radial-gradient(circle at top right, #0f172a, #020617)' }}>
+    <div className="min-h-screen bg-[#020617] p-2 md:p-3 text-slate-200 font-sans flex flex-col gap-2 overflow-hidden h-screen" style={{ background: 'radial-gradient(circle at top right, #0f172a, #020617)' }}>
       <style>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; } 
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; } 
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; } 
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; } 
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; } 
@@ -379,31 +466,31 @@ export default function Agenda() {
       `}</style>
 
       {/* CABEÇALHO */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 w-full shrink-0">
+      <div className="flex justify-between items-center w-full shrink-0 px-2">
         <div>
-          <h1 className="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 tracking-tight leading-none flex items-center gap-2">
-            <ShieldAlert size={20} className="text-cyan-400"/> DASHBOARD CLIMÁTICO & AGENDA
+          <h1 className="text-lg md:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 tracking-tight leading-none flex items-center gap-2">
+            <ShieldAlert size={18} className="text-cyan-400"/> DASHBOARD CLIMÁTICO & AGENDA
           </h1>
         </div>
-        <div className={`flex items-center gap-2 px-4 py-2 rounded-lg border shadow-lg ${statusColors[globalThreat.level]} w-full md:w-auto justify-center`}>
-          <AlertTriangle size={16} className={globalThreat.level === 'RED' ? 'animate-pulse' : ''} />
-          <span className="text-xs font-bold uppercase tracking-wider">{globalThreat.text}</span>
+        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border shadow-lg ${statusColors[globalThreat.level]}`}>
+          <AlertTriangle size={14} className={globalThreat.level === 'RED' ? 'animate-pulse' : ''} />
+          <span className="text-[10px] font-bold uppercase tracking-wider">{globalThreat.text}</span>
         </div>
       </div>
       
       {/* SELETOR DE ESTAÇÕES (ABAS) */}
-      <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar w-full shrink-0 border-b border-slate-800">
+      <div className="flex gap-1 overflow-x-auto pb-1 custom-scrollbar w-full shrink-0 border-b border-slate-800 px-2">
         {BASES.map((base) => {
           const stationData = stationsData.find(s => s.id === base.id);
           const flightData = stationData ? getFlightCategory(stationData.current.visibility, stationData.current.gusts) : null;
           const isSelected = activeId === base.id;
           
           return (
-            <button key={base.id} onClick={() => setActiveId(base.id)} className={`flex-shrink-0 flex items-center gap-3 px-3 lg:px-4 py-2 rounded-t-lg transition-all duration-300 border-x border-t ${isSelected ? 'bg-slate-800/80 border-slate-600 shadow-md' : 'bg-slate-900/30 border-slate-800/50 hover:bg-slate-800/50'}`}>
-              {base.id === 'HYDRO' ? <Waves size={12} className={isSelected ? "text-blue-400" : "text-slate-500"}/> : flightData ? <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${flightData.dot}`}></div> : <MapIcon size={12} className={isSelected ? "text-cyan-400" : "text-slate-500"}/>}
+            <button key={base.id} onClick={() => setActiveId(base.id)} className={`flex-shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-t-lg transition-all duration-300 border-x border-t ${isSelected ? 'bg-slate-800/80 border-slate-600 shadow-md' : 'bg-slate-900/30 border-slate-800/50 hover:bg-slate-800/50'}`}>
+              {base.id === 'HYDRO' ? <Waves size={10} className={isSelected ? "text-blue-400" : "text-slate-500"}/> : flightData ? <div className={`w-2 h-2 rounded-full shrink-0 ${flightData.dot}`}></div> : <MapIcon size={10} className={isSelected ? "text-cyan-400" : "text-slate-500"}/>}
               <div className="flex flex-col items-start text-left">
-                <span className={`text-[10px] lg:text-xs font-bold whitespace-nowrap ${isSelected ? 'text-white' : 'text-slate-400'}`}>{base.name}</span>
-                {stationData && <span className={`text-[9px] font-bold ${isSelected ? 'text-cyan-400' : 'text-slate-600'}`}>{stationData.current.temp}°C</span>}
+                <span className={`text-[9px] lg:text-[10px] font-bold whitespace-nowrap ${isSelected ? 'text-white' : 'text-slate-400'}`}>{base.name}</span>
+                {stationData && <span className={`text-[8px] font-bold ${isSelected ? 'text-cyan-400' : 'text-slate-600'}`}>{stationData.current.temp}°C</span>}
               </div>
             </button>
           );
@@ -411,24 +498,24 @@ export default function Agenda() {
       </div>
 
       {/* ÁREA PRINCIPAL: BARRA LATERAL ESQUERDA + CALENDÁRIO DIREITA */}
-      <div className="flex-1 flex flex-col lg:flex-row gap-4 overflow-hidden min-h-0 pt-2">
+      <div className="flex-1 flex flex-col lg:flex-row gap-3 overflow-hidden min-h-0">
         
-        {/* BARRA LATERAL COM OS DADOS (WIDGETS CLIMÁTICOS) */}
-        <div className="w-full lg:w-[450px] xl:w-[500px] shrink-0 h-[50%] lg:h-full overflow-hidden">
+        {/* BARRA LATERAL COM OS DADOS */}
+        <div className="w-full lg:w-[380px] xl:w-[420px] shrink-0 h-[45%] lg:h-full overflow-hidden">
            {activeId === 'RS-GENERAL' ? <GeneralOverview stations={stationsData} rivers={riverData} /> : 
             activeId === 'HYDRO' ? <HydrologyTerminal rivers={riverData} isSyncing={isHydroSyncing} /> : 
             <StationTerminal data={stationsData.find(s => s.id === activeId)} />}
         </div>
 
         {/* ÁREA DA AGENDA (GOOGLE CALENDAR) */}
-        <div className="flex-1 relative rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] border border-slate-700 bg-white overflow-hidden h-[50%] lg:h-full">
+        <div className="flex-1 relative rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] border border-slate-700 bg-white overflow-hidden h-[55%] lg:h-full">
           <iframe 
-            src="https://calendar.google.com/calendar/embed?src=sdsophaco@gmail.com&ctz=America/Sao_Paulo&mode=WEEK" 
+            src="https://calendar.google.com/calendar/embed?src=sdsophaco@gmail.com&ctz=America/Sao_Paulo&mode=WEEK&showTitle=0&showPrint=0&showTabs=1&showCalendars=0&showTz=0" 
             style={{ border: 0 }} 
             width="100%" 
             height="100%" 
             frameBorder="0" 
-            scrolling="yes"
+            scrolling="no"
             title="Agenda Google Calendar"
           ></iframe>
         </div>
