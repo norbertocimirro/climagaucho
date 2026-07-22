@@ -15,7 +15,7 @@ const BASES = [
   { id: 'SBBG', name: 'BAGÉ', lat: -31.33, lon: -54.11 }
 ];
 
-// Cópia EXATA do seu App.jsx original
+// CÓPIA 100% EXATA DO APP.JSX
 const INITIAL_RIVERS = [
   { id: 'taquari', name: 'Rio Taquari (Lajeado)', cod: '86695000', feedItemUrl: 'https://nivelguaiba.com.br/lajeado', level: null, alert: 15.00, flood: 19.00, lat: -29.50, lon: -51.96 },
   { id: 'guaiba', name: 'Guaíba (Cais Mauá)', cod: '87450004', feedItemUrl: 'https://nivelguaiba.com.br/', level: null, alert: 2.50, flood: 3.00, lat: -30.03, lon: -51.23 },
@@ -96,7 +96,7 @@ const HydrologyTerminal = ({ rivers, isSyncing }) => {
                 <span className={`text-xs font-bold leading-tight ${isOffline ? 'text-slate-500' : 'text-slate-200'}`}>{river.name}</span>
                 {!isOffline && (
                   <span className={`text-[7px] px-1.5 py-0.5 rounded font-bold tracking-widest ${river.isFeed ? 'bg-cyan-500/10 text-cyan-500 border border-cyan-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'}`}>
-                    {river.isFeed ? 'FEED ATIVO' : 'SACE/ANA'}
+                    {river.isFeed ? 'FEED SEMA / PRATICAGEM' : 'SACE / ANA OFICIAL'}
                   </span>
                 )}
               </div>
@@ -347,12 +347,13 @@ export default function Agenda() {
       } catch (error) { setIsInitializing(false); }
     };
 
-    // CÓPIA EXATA DA LÓGICA DO SEU APP.JSX ORIGINAL
+    // ============================================================
+    // CÓPIA 100% EXATA E LITERAL DA LÓGICA DO SEU APP.JSX ORIGINAL
+    // ============================================================
     const fetchRivers = async () => {
       setIsHydroSyncing(true);
       
       try {
-        // Função para garantir que lemos o conteúdo, independente de como o Proxy empacotou
         const getFeedItems = async (url) => {
           const proxies = [
             `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
@@ -363,12 +364,10 @@ export default function Agenda() {
               const res = await fetch(p, { cache: 'no-store' });
               if (res.ok) {
                 const text = await res.text();
-                // Verifica se foi empacotado no AllOrigins /get por engano
                 let data;
                 try { data = JSON.parse(text); } catch (e) { continue; }
                 
                 if (data.items) return data.items;
-                // Abre a caixa se o JSON foi passado como string na prop contents
                 if (data.contents) {
                    const innerData = JSON.parse(data.contents);
                    if (innerData.items) return innerData.items;
@@ -388,13 +387,11 @@ export default function Agenda() {
           let nivelAtual = null;
           let isFeed = false;
 
-          // TÁTICA 1: O NÚMERO EXATO DO JSON QUE VOCÊ ME MANDOU!
+          // TÁTICA 1
           if (rio.feedItemUrl && allFeedItems.length > 0) {
-            // Acha o objeto exato da cidade usando a URL
             const item = allFeedItems.find(i => i.url === rio.feedItemUrl);
             
             if (item) {
-              // Procura o número no title (ex: "Porto Alegre: 0,67m") ou no content_text
               let match = null;
               if (item.title) match = item.title.match(/([0-9]+[.,][0-9]+)\s*m/i);
               if (!match && item.content_text) match = item.content_text.match(/([0-9]+[.,][0-9]+)\s*m/i);
@@ -406,7 +403,7 @@ export default function Agenda() {
             }
           }
 
-          // TÁTICA 2: CPRM/SACE (Plano B Governamental - Funciona liso caso a comunidade caia)
+          // TÁTICA 2
           if (nivelAtual === null) {
             try {
               const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent('https://sace.cprm.gov.br/api/dadosestacao/' + rio.cod)}`);
@@ -425,7 +422,7 @@ export default function Agenda() {
             } catch(e) {}
           }
 
-          // TÁTICA 3: ANA GOVERNO (Último Reduto)
+          // TÁTICA 3
           if (nivelAtual === null) {
             try {
               const url = `https://api.allorigins.win/get?url=${encodeURIComponent('http://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosTempoReal?codEstacao=' + rio.cod)}`;
@@ -450,7 +447,7 @@ export default function Agenda() {
       } catch (error) {
         console.error("Falha tática na hidrologia:", error);
       } finally {
-        setIsHydroSyncing(false); // Destrava a tela para sempre mostrar o Glass Cockpit
+        setIsHydroSyncing(false);
       }
     };
 
