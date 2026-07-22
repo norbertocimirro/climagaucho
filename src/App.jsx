@@ -17,7 +17,7 @@ const BASES = [
   { id: 'SBBG', name: 'BAGÉ', lat: -31.33, lon: -54.11 }
 ];
 
-// URLs exatas que batem com o "url" dentro do seu Feed JSON
+// Ouro Tático: Links Diretos de Feed JSON/RSS (Leitura Pura)
 const INITIAL_RIVERS = [
   { id: 'taquari', name: 'Rio Taquari (Lajeado)', cod: '86695000', feedItemUrl: 'https://nivelguaiba.com.br/lajeado', level: null, alert: 15.00, flood: 19.00, lat: -29.50, lon: -51.96 },
   { id: 'guaiba', name: 'Guaíba (Cais Mauá)', cod: '87450004', feedItemUrl: 'https://nivelguaiba.com.br/', level: null, alert: 2.50, flood: 3.00, lat: -30.03, lon: -51.23 },
@@ -287,6 +287,7 @@ const StationTerminal = ({ data }) => {
         </div>
       </div>
 
+      {/* BLOCO 6 HORAS */}
       <div className="mt-4 p-3 lg:p-4 border border-slate-700/50 bg-slate-900/40 rounded-xl">
         <div className="text-[10px] text-cyan-400 font-bold tracking-widest mb-3">PRECIPITAÇÃO (PRÓXIMAS 6 HORAS)</div>
         <div className="flex justify-between items-end gap-1">
@@ -302,6 +303,26 @@ const StationTerminal = ({ data }) => {
           ))}
         </div>
       </div>
+
+      {/* NOVO BLOCO TÁTICO: DEFESA CIVIL 7 DIAS */}
+      <div className="mt-4 p-3 lg:p-4 border border-slate-700/50 bg-slate-900/40 rounded-xl">
+        <div className="text-[10px] text-amber-400 font-bold tracking-widest mb-3 flex items-center gap-2">
+          <ShieldAlert size={12}/> PREVISÃO ESTENDIDA (7 DIAS)
+        </div>
+        <div className="flex justify-between items-center gap-1 overflow-x-auto custom-scrollbar pb-1">
+          {data.forecast.map((day, idx) => (
+            <div key={idx} className="flex flex-col items-center flex-1 min-w-[45px] lg:min-w-[50px] p-1.5 bg-slate-900/80 rounded-lg border border-slate-800 shrink-0">
+              <span className={`text-[9px] font-black tracking-wider ${idx === 0 ? 'text-amber-400' : 'text-slate-300'}`}>{day.dayName}</span>
+              <div className="transform scale-50 -my-3">{getWeatherIcon(day.code, 1)}</div>
+              <span className="text-[8px] font-bold text-slate-400 mt-1">{day.max}°<span className="text-slate-600">/{day.min}°</span></span>
+              <span className={`text-[9px] font-bold w-full text-center mt-1 py-0.5 rounded border ${day.rain > 15 ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' : day.rain > 0 ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-slate-800 text-slate-500 border-transparent'}`}>
+                {day.rain > 0 ? `${day.rain.toFixed(1)}` : '0'} <span className="text-[7px]">mm</span>
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
     </div>
   );
 };
@@ -327,6 +348,7 @@ export default function App() {
     const fetchWeather = async () => {
       try {
         const results = await Promise.all(BASES.slice(2).map(async (base) => {
+          // Open-Meteo API puxando 7 dias de daily automaticamente
           const url = `https://api.open-meteo.com/v1/forecast?latitude=${base.lat}&longitude=${base.lon}&current=temperature_2m,apparent_temperature,is_day,precipitation,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility,relative_humidity_2m,pressure_msl,cloud_cover&hourly=temperature_2m,weather_code,precipitation,wind_gusts_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,uv_index_max,sunrise,sunset&timezone=America%2FSao_Paulo`;
           const res = await fetch(url);
           const json = await res.json();
@@ -345,8 +367,9 @@ export default function App() {
             }
           }
 
+          // AUMENTADO DE 5 PARA 7 DIAS (Pedido do Comando)
           let daysForecast = [];
-          for (let i = 0; i < 5; i++) {
+          for (let i = 0; i < 7; i++) {
             const dateObj = new Date(json.daily.time[i] + "T12:00:00");
             const dayName = i === 0 ? "HOJE" : ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"][dateObj.getDay()];
             daysForecast.push({
@@ -463,6 +486,24 @@ export default function App() {
                       isFeed = false;
                       break;
                     }
+                  }
+                }
+              }
+            } catch(e) {}
+          }
+
+          // TÁTICA 3: ANA GOVERNO (Último Reduto)
+          if (nivelAtual === null) {
+            try {
+              const url = `https://api.allorigins.win/get?url=${encodeURIComponent('http://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosTempoReal?codEstacao=' + rio.cod)}`;
+              const res = await fetch(url, { cache: 'no-store' });
+              if (res.ok) {
+                const data = await res.json();
+                if (data.contents && data.contents.includes('<Nivel>')) {
+                  const match = data.contents.match(/<Nivel>([0-9]+)<\/Nivel>/);
+                  if (match && match[1]) {
+                    nivelAtual = parseFloat(match[1]) / 100;
+                    isFeed = false;
                   }
                 }
               }
