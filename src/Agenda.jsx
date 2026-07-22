@@ -61,7 +61,7 @@ const HydrologyTerminal = ({ rivers, isSyncing }) => {
       <div className="flex justify-between items-center mb-3 border-b border-slate-800 pb-3 shrink-0">
         <div>
           <div className="flex items-center gap-1 text-[10px] text-cyan-400 font-bold tracking-widest mb-1">
-            <ActivitySquare size={10} /> TELEMETRIA: FEED JSON DIRETO
+            <ActivitySquare size={10} /> TELEMETRIA EM TEMPO REAL
           </div>
           <h2 className="text-xl font-black text-white">REDE HIDROLÓGICA</h2>
         </div>
@@ -93,11 +93,6 @@ const HydrologyTerminal = ({ rivers, isSyncing }) => {
             <div key={river.id} className={`p-3 rounded-xl border ${cardStyle} flex flex-col justify-between shrink-0`}>
               <div className="flex justify-between items-start mb-2">
                 <span className={`text-sm font-bold ${isOffline ? 'text-slate-500' : 'text-slate-200'}`}>{river.name}</span>
-                {!isOffline && (
-                  <span className={`text-[8px] px-1.5 py-0.5 rounded font-bold tracking-widest ${river.isFeed ? 'bg-cyan-500/10 text-cyan-500 border border-cyan-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'}`}>
-                    {river.isFeed ? 'FEED SEMA / PRATICAGEM' : 'SACE / ANA OFICIAL'}
-                  </span>
-                )}
               </div>
               <div className="flex items-end gap-1 mb-1">
                 <span className={`text-3xl font-black leading-none tracking-tighter ${numColor}`}>
@@ -346,13 +341,13 @@ export default function Agenda() {
       } catch (error) { setIsInitializing(false); }
     };
 
-    // A MESMA FUNÇÃO DO APP.JSX ORIGINAL
     const fetchRivers = async () => {
       setIsHydroSyncing(true);
-      
       try {
+        // Tática ultra-resistente para evitar o bloqueio de proxies
         const getFeedItems = async (url) => {
           const proxies = [
+            `https://corsproxy.io/?${encodeURIComponent(url)}`,
             `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
             `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
           ];
@@ -363,7 +358,6 @@ export default function Agenda() {
                 const text = await res.text();
                 let data;
                 try { data = JSON.parse(text); } catch (e) { continue; }
-                
                 if (data.items) return data.items;
                 if (data.contents) {
                    const innerData = JSON.parse(data.contents);
@@ -382,33 +376,35 @@ export default function Agenda() {
 
         const updatedRivers = await Promise.all(INITIAL_RIVERS.map(async (rio) => {
           let nivelAtual = null;
-          let isFeed = false;
 
+          // TÁTICA 1: Lendo o FEED JSON
           if (rio.feedItemUrl && allFeedItems.length > 0) {
-            const item = allFeedItems.find(i => i.url === rio.feedItemUrl);
-            
+            const targetUrl = rio.feedItemUrl.replace(/\/$/, '');
+            const item = allFeedItems.find(i => (i.url || '').replace(/\/$/, '') === targetUrl);
             if (item) {
               let match = null;
               if (item.title) match = item.title.match(/([0-9]+[.,][0-9]+)\s*m/i);
               if (!match && item.content_text) match = item.content_text.match(/([0-9]+[.,][0-9]+)\s*m/i);
-
               if (match && match[1]) {
                 nivelAtual = parseFloat(match[1].replace(',', '.'));
-                isFeed = true;
               }
             }
           }
 
+          // TÁTICA 2: SACE/CPRM (Usando a sua própria infraestrutura da Vercel)
           if (nivelAtual === null) {
             try {
-              const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent('https://sace.cprm.gov.br/api/dadosestacao/' + rio.cod)}`);
+              // Note que agora ele bate no '/api/sace' que você configurou no vercel.json! Anti-bloqueio total.
+              let res = await fetch(`/api/sace/${rio.cod}`, { cache: 'no-store' });
+              if (!res.ok) {
+                res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent('https://sace.cprm.gov.br/api/dadosestacao/' + rio.cod)}`);
+              }
               if (res.ok) {
                 const data = await res.json();
                 if (Array.isArray(data) && data.length > 0) {
                   for (let i = data.length - 1; i >= 0; i--) {
                     if (data[i].nivel) {
                       nivelAtual = data[i].nivel / 100;
-                      isFeed = false;
                       break;
                     }
                   }
@@ -417,29 +413,38 @@ export default function Agenda() {
             } catch(e) {}
           }
 
+          // TÁTICA 3: ANA (Aproveitando a sua api/ana.js nativa)
           if (nivelAtual === null) {
             try {
-              const url = `https://api.allorigins.win/get?url=${encodeURIComponent('http://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosTempoReal?codEstacao=' + rio.cod)}`;
-              const res = await fetch(url, { cache: 'no-store' });
+              // Bate diretamente na sua função Serverless (api/ana.js) e evita qualquer proxy externo!
+              let res = await fetch(`/api/ana/${rio.cod}`, { cache: 'no-store' });
+              let text = "";
+              
               if (res.ok) {
-                const data = await res.json();
-                if (data.contents && data.contents.includes('<Nivel>')) {
-                  const match = data.contents.match(/<Nivel>([0-9]+)<\/Nivel>/);
-                  if (match && match[1]) {
-                    nivelAtual = parseFloat(match[1]) / 100;
-                    isFeed = false;
-                  }
+                text = await res.text();
+              } else {
+                res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent('http://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosTempoReal?codEstacao=' + rio.cod)}`);
+                if (res.ok) {
+                  const data = await res.json();
+                  if (data.contents) text = data.contents;
+                }
+              }
+              
+              if (text && text.includes('<Nivel>')) {
+                const match = text.match(/<Nivel>([0-9]+)<\/Nivel>/);
+                if (match && match[1]) {
+                  nivelAtual = parseFloat(match[1]) / 100;
                 }
               }
             } catch(e) {}
           }
 
-          return { ...rio, level: nivelAtual !== null ? parseFloat(nivelAtual) : null, isFeed };
+          return { ...rio, level: nivelAtual !== null ? parseFloat(nivelAtual) : null };
         }));
         
         setRiverData(updatedRivers);
       } catch (error) {
-        console.error("Falha tática na hidrologia:", error);
+        console.error("Erro nos rios:", error);
       } finally {
         setIsHydroSyncing(false);
       }
