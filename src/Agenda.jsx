@@ -61,7 +61,7 @@ const HydrologyTerminal = ({ rivers, isSyncing }) => {
       <div className="flex justify-between items-center mb-3 border-b border-slate-800 pb-3 shrink-0">
         <div>
           <div className="flex items-center gap-1 text-[10px] text-cyan-400 font-bold tracking-widest mb-1">
-            <ActivitySquare size={10} /> TELEMETRIA EM TEMPO REAL
+            <ActivitySquare size={10} /> TELEMETRIA: FEED JSON DIRETO
           </div>
           <h2 className="text-xl font-black text-white">REDE HIDROLÓGICA</h2>
         </div>
@@ -93,6 +93,11 @@ const HydrologyTerminal = ({ rivers, isSyncing }) => {
             <div key={river.id} className={`p-3 rounded-xl border ${cardStyle} flex flex-col justify-between shrink-0`}>
               <div className="flex justify-between items-start mb-2">
                 <span className={`text-sm font-bold ${isOffline ? 'text-slate-500' : 'text-slate-200'}`}>{river.name}</span>
+                {!isOffline && (
+                  <span className={`text-[8px] px-1.5 py-0.5 rounded font-bold tracking-widest ${river.isFeed ? 'bg-cyan-500/10 text-cyan-500 border border-cyan-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'}`}>
+                    {river.isFeed ? 'FEED SEMA / PRATICAGEM' : 'SACE / ANA OFICIAL'}
+                  </span>
+                )}
               </div>
               <div className="flex items-end gap-1 mb-1">
                 <span className={`text-3xl font-black leading-none tracking-tighter ${numColor}`}>
@@ -231,7 +236,6 @@ const StationTerminal = ({ data }) => {
           </div>
         </div>
 
-        {/* BLOCO 6 HORAS RESTAURADO */}
         <div className="mb-4 p-3 border border-slate-700/50 bg-slate-900/40 rounded-xl">
           <div className="text-[9px] text-cyan-400 font-bold tracking-widest mb-3">PRECIPITAÇÃO (6 HORAS)</div>
           <div className="flex justify-between items-end gap-1">
@@ -248,7 +252,6 @@ const StationTerminal = ({ data }) => {
           </div>
         </div>
 
-        {/* BLOCO 7 DIAS */}
         <div className="p-3 border border-slate-700/50 bg-slate-900/40 rounded-xl">
           <div className="text-[9px] text-amber-400 font-bold tracking-widest mb-3 flex items-center gap-2">
             <ShieldAlert size={12}/> PREVISÃO (7 DIAS)
@@ -291,7 +294,6 @@ export default function Agenda() {
           const res = await fetch(url);
           const json = await res.json();
 
-          // RESTAURADO: Coleta das próximas 6 horas
           let hourlyForecast = [];
           const currentHourIdx = new Date().getHours();
           for (let i = 1; i <= 6; i++) {
@@ -344,10 +346,11 @@ export default function Agenda() {
       } catch (error) { setIsInitializing(false); }
     };
 
+    // A MESMA FUNÇÃO DO APP.JSX ORIGINAL
     const fetchRivers = async () => {
       setIsHydroSyncing(true);
+      
       try {
-        // RESTAURADO: Buscador robusto anti-bloqueio com proxies alternativos
         const getFeedItems = async (url) => {
           const proxies = [
             `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
@@ -360,6 +363,7 @@ export default function Agenda() {
                 const text = await res.text();
                 let data;
                 try { data = JSON.parse(text); } catch (e) { continue; }
+                
                 if (data.items) return data.items;
                 if (data.contents) {
                    const innerData = JSON.parse(data.contents);
@@ -378,21 +382,23 @@ export default function Agenda() {
 
         const updatedRivers = await Promise.all(INITIAL_RIVERS.map(async (rio) => {
           let nivelAtual = null;
+          let isFeed = false;
 
-          // TÁTICA 1: FEED
           if (rio.feedItemUrl && allFeedItems.length > 0) {
             const item = allFeedItems.find(i => i.url === rio.feedItemUrl);
+            
             if (item) {
               let match = null;
               if (item.title) match = item.title.match(/([0-9]+[.,][0-9]+)\s*m/i);
               if (!match && item.content_text) match = item.content_text.match(/([0-9]+[.,][0-9]+)\s*m/i);
+
               if (match && match[1]) {
                 nivelAtual = parseFloat(match[1].replace(',', '.'));
+                isFeed = true;
               }
             }
           }
 
-          // TÁTICA 2: RESTAURAÇÃO DO BACKUP SACE/CPRM
           if (nivelAtual === null) {
             try {
               const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent('https://sace.cprm.gov.br/api/dadosestacao/' + rio.cod)}`);
@@ -402,6 +408,7 @@ export default function Agenda() {
                   for (let i = data.length - 1; i >= 0; i--) {
                     if (data[i].nivel) {
                       nivelAtual = data[i].nivel / 100;
+                      isFeed = false;
                       break;
                     }
                   }
@@ -410,7 +417,6 @@ export default function Agenda() {
             } catch(e) {}
           }
 
-          // TÁTICA 3: RESTAURAÇÃO DO BACKUP ANA
           if (nivelAtual === null) {
             try {
               const url = `https://api.allorigins.win/get?url=${encodeURIComponent('http://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosTempoReal?codEstacao=' + rio.cod)}`;
@@ -421,17 +427,19 @@ export default function Agenda() {
                   const match = data.contents.match(/<Nivel>([0-9]+)<\/Nivel>/);
                   if (match && match[1]) {
                     nivelAtual = parseFloat(match[1]) / 100;
+                    isFeed = false;
                   }
                 }
               }
             } catch(e) {}
           }
 
-          return { ...rio, level: nivelAtual !== null ? parseFloat(nivelAtual) : null };
+          return { ...rio, level: nivelAtual !== null ? parseFloat(nivelAtual) : null, isFeed };
         }));
+        
         setRiverData(updatedRivers);
       } catch (error) {
-        console.error("Erro nos rios:", error);
+        console.error("Falha tática na hidrologia:", error);
       } finally {
         setIsHydroSyncing(false);
       }
