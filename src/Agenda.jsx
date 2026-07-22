@@ -15,12 +15,13 @@ const BASES = [
   { id: 'SBBG', name: 'BAGÉ', lat: -31.33, lon: -54.11 }
 ];
 
+// Cópia EXATA do seu App.jsx original
 const INITIAL_RIVERS = [
-  { id: 'taquari', name: 'Rio Taquari (Lajeado)', cod: '86695000', feedItemUrl: 'https://nivelguaiba.com.br/lajeado', level: null, alert: 15.00, flood: 19.00 },
-  { id: 'guaiba', name: 'Guaíba (Cais Mauá)', cod: '87450004', feedItemUrl: 'https://nivelguaiba.com.br/', level: null, alert: 2.50, flood: 3.00 },
-  { id: 'cai', name: 'Rio Caí (S. S. do Caí)', cod: '87382000', feedItemUrl: 'https://nivelguaiba.com.br/saosebastiaodocai', level: null, alert: 7.00, flood: 10.00 },
-  { id: 'sinos', name: 'Rio dos Sinos (S. Leopoldo)', cod: '87398000', feedItemUrl: 'https://nivelguaiba.com.br/saoleopoldo', level: null, alert: 4.30, flood: 4.50 },
-  { id: 'uruguai', name: 'Rio Uruguai (Uruguaiana)', cod: '77150000', feedItemUrl: 'https://niveluruguai.com.br/', level: null, alert: 7.50, flood: 8.50 }
+  { id: 'taquari', name: 'Rio Taquari (Lajeado)', cod: '86695000', feedItemUrl: 'https://nivelguaiba.com.br/lajeado', level: null, alert: 15.00, flood: 19.00, lat: -29.50, lon: -51.96 },
+  { id: 'guaiba', name: 'Guaíba (Cais Mauá)', cod: '87450004', feedItemUrl: 'https://nivelguaiba.com.br/', level: null, alert: 2.50, flood: 3.00, lat: -30.03, lon: -51.23 },
+  { id: 'cai', name: 'Rio Caí (S. S. do Caí)', cod: '87382000', feedItemUrl: 'https://nivelguaiba.com.br/saosebastiaodocai', level: null, alert: 7.00, flood: 10.00, lat: -29.58, lon: -51.37 },
+  { id: 'sinos', name: 'Rio dos Sinos (S. Leopoldo)', cod: '87398000', feedItemUrl: 'https://nivelguaiba.com.br/saoleopoldo', level: null, alert: 4.30, flood: 4.50, lat: -29.76, lon: -51.14 },
+  { id: 'uruguai', name: 'Rio Uruguai (Uruguaiana)', cod: '77150000', feedItemUrl: 'https://niveluruguai.com.br/', level: null, alert: 7.50, flood: 8.50, lat: -29.76, lon: -57.08 }
 ];
 
 // ==========================================
@@ -346,32 +347,31 @@ export default function Agenda() {
       } catch (error) { setIsInitializing(false); }
     };
 
+    // CÓPIA EXATA DA LÓGICA DO SEU APP.JSX ORIGINAL
     const fetchRivers = async () => {
       setIsHydroSyncing(true);
       
       try {
+        // Função para garantir que lemos o conteúdo, independente de como o Proxy empacotou
         const getFeedItems = async (url) => {
-          // O SISTEMA ROBUSTO ORIGINAL DO SEU APP.JSX!
           const proxies = [
-            `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
             `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-            `https://corsproxy.io/?${encodeURIComponent(url)}`
+            `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
           ];
-
           for (const p of proxies) {
             try {
               const res = await fetch(p, { cache: 'no-store' });
               if (res.ok) {
                 const text = await res.text();
+                // Verifica se foi empacotado no AllOrigins /get por engano
                 let data;
                 try { data = JSON.parse(text); } catch (e) { continue; }
                 
-                if (data && data.items && Array.isArray(data.items)) return data.items;
-                if (data && data.contents) {
+                if (data.items) return data.items;
+                // Abre a caixa se o JSON foi passado como string na prop contents
+                if (data.contents) {
                    const innerData = JSON.parse(data.contents);
-                   if (innerData && innerData.items && Array.isArray(innerData.items)) {
-                     return innerData.items;
-                   }
+                   if (innerData.items) return innerData.items;
                 }
               }
             } catch(e) {}
@@ -388,12 +388,17 @@ export default function Agenda() {
           let nivelAtual = null;
           let isFeed = false;
 
-          // TÁTICA 1: JSON FEED
+          // TÁTICA 1: O NÚMERO EXATO DO JSON QUE VOCÊ ME MANDOU!
           if (rio.feedItemUrl && allFeedItems.length > 0) {
-            const item = allFeedItems.find(i => i.url === rio.feedItemUrl || (i.id && i.id.startsWith(rio.feedItemUrl)));
+            // Acha o objeto exato da cidade usando a URL
+            const item = allFeedItems.find(i => i.url === rio.feedItemUrl);
+            
             if (item) {
-              let match = item.title?.match(/([0-9]+[.,][0-9]+)\s*m/i);
-              if (!match) match = item.content_text?.match(/([0-9]+[.,][0-9]+)\s*(?:m|metros)/i);
+              // Procura o número no title (ex: "Porto Alegre: 0,67m") ou no content_text
+              let match = null;
+              if (item.title) match = item.title.match(/([0-9]+[.,][0-9]+)\s*m/i);
+              if (!match && item.content_text) match = item.content_text.match(/([0-9]+[.,][0-9]+)\s*m/i);
+
               if (match && match[1]) {
                 nivelAtual = parseFloat(match[1].replace(',', '.'));
                 isFeed = true;
@@ -401,7 +406,7 @@ export default function Agenda() {
             }
           }
 
-          // TÁTICA 2: SACE/CPRM
+          // TÁTICA 2: CPRM/SACE (Plano B Governamental - Funciona liso caso a comunidade caia)
           if (nivelAtual === null) {
             try {
               const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent('https://sace.cprm.gov.br/api/dadosestacao/' + rio.cod)}`);
@@ -420,7 +425,7 @@ export default function Agenda() {
             } catch(e) {}
           }
 
-          // TÁTICA 3: ANA
+          // TÁTICA 3: ANA GOVERNO (Último Reduto)
           if (nivelAtual === null) {
             try {
               const url = `https://api.allorigins.win/get?url=${encodeURIComponent('http://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosTempoReal?codEstacao=' + rio.cod)}`;
@@ -445,7 +450,7 @@ export default function Agenda() {
       } catch (error) {
         console.error("Falha tática na hidrologia:", error);
       } finally {
-        setIsHydroSyncing(false);
+        setIsHydroSyncing(false); // Destrava a tela para sempre mostrar o Glass Cockpit
       }
     };
 
