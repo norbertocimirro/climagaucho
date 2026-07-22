@@ -7,8 +7,9 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
-        main: resolve(__dirname, 'index.html'),
-        agenda: resolve(__dirname, 'agenda.html')
+        // Usamos resolve(process.cwd(), ...) para garantir que ele ache a raiz certinha
+        main: resolve(process.cwd(), 'index.html'),
+        agenda: resolve(process.cwd(), 'agenda.html')
       }
     }
   }
