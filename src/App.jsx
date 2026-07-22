@@ -161,7 +161,7 @@ const GeneralOverview = ({ stations, rivers }) => {
     <div className="bg-[#0b1120]/90 backdrop-blur-xl rounded-2xl p-4 lg:p-6 border border-slate-700 shadow-2xl h-full overflow-y-auto custom-scrollbar">
       <h2 className="text-xl lg:text-2xl font-black text-white flex items-center gap-3 mb-6 border-b border-slate-800 pb-4">
         <Siren className={hasAlerts ? "text-rose-500 animate-pulse" : "text-emerald-500"} />
-        SITUAÇÃO TÁTICA DO RS
+        SITUAÇÃO DO RS
       </h2>
 
       {!hasAlerts ? (
@@ -564,7 +564,7 @@ export default function App() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 w-full shrink-0">
         <div>
           <h1 className="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 tracking-tight leading-none flex items-center gap-2">
-            <ShieldAlert size={20} className="text-cyan-400"/> COMANDO TÁTICO HACO
+            <ShieldAlert size={20} className="text-cyan-400"/> PANORAMA CLIMÁTICO RS
           </h1>
         </div>
         <div className={`flex items-center gap-2 px-4 py-2 rounded-lg border shadow-lg ${statusColors[globalThreat.level]} w-full md:w-auto justify-center`}>
