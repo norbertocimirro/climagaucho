@@ -27,47 +27,47 @@ const INITIAL_RIVERS = [
 // 2. FUNÇÕES METEOROLÓGICAS 
 // ==========================================
 const getWeatherIcon = (code, isDay = 1) => {
-  if (code === 0) return isDay ? <Sun className="text-yellow-400 drop-shadow-md w-8 h-8 lg:w-12 lg:h-12" /> : <Moon className="text-blue-300 drop-shadow-md w-8 h-8 lg:w-12 lg:h-12" />;
-  if (code === 1 || code === 2) return isDay ? <CloudSun className="text-yellow-200 drop-shadow-md w-8 h-8 lg:w-12 lg:h-12" /> : <Cloud className="text-slate-300 drop-shadow-md w-8 h-8 lg:w-12 lg:h-12" />;
-  if (code === 3) return <Cloud className="text-slate-400 drop-shadow-md w-8 h-8 lg:w-12 lg:h-12" />;
-  if (code >= 51 && code <= 55) return <CloudDrizzle className="text-blue-300 drop-shadow-md w-8 h-8 lg:w-12 lg:h-12" />;
-  if (code >= 61 && code <= 65) return <CloudRain className="text-blue-400 drop-shadow-md w-8 h-8 lg:w-12 lg:h-12" />;
-  if (code >= 80 && code <= 82) return <CloudRain className="text-indigo-400 drop-shadow-md w-8 h-8 lg:w-12 lg:h-12" />;
-  if (code >= 95) return <CloudLightning className="text-rose-500 drop-shadow-md w-8 h-8 lg:w-12 lg:h-12" />;
-  return <Cloud className="text-slate-500 w-8 h-8 lg:w-12 lg:h-12" />;
+  if (code === 0) return isDay ? <Sun className="text-yellow-400 drop-shadow-md w-8 h-8 lg:w-10 lg:h-10" /> : <Moon className="text-blue-300 drop-shadow-md w-8 h-8 lg:w-10 lg:h-10" />;
+  if (code === 1 || code === 2) return isDay ? <CloudSun className="text-yellow-200 drop-shadow-md w-8 h-8 lg:w-10 lg:h-10" /> : <Cloud className="text-slate-300 drop-shadow-md w-8 h-8 lg:w-10 lg:h-10" />;
+  if (code === 3) return <Cloud className="text-slate-400 drop-shadow-md w-8 h-8 lg:w-10 lg:h-10" />;
+  if (code >= 51 && code <= 55) return <CloudDrizzle className="text-blue-300 drop-shadow-md w-8 h-8 lg:w-10 lg:h-10" />;
+  if (code >= 61 && code <= 65) return <CloudRain className="text-blue-400 drop-shadow-md w-8 h-8 lg:w-10 lg:h-10" />;
+  if (code >= 80 && code <= 82) return <CloudRain className="text-indigo-400 drop-shadow-md w-8 h-8 lg:w-10 lg:h-10" />;
+  if (code >= 95) return <CloudLightning className="text-rose-500 drop-shadow-md w-8 h-8 lg:w-10 lg:h-10" />;
+  return <Cloud className="text-slate-500 w-8 h-8 lg:w-10 lg:h-10" />;
 };
 
 const getFlightCategory = (visibility, windGust) => {
-  if (visibility < 3000 || windGust > 50) return { rule: "VOO RESTRITO", color: "bg-rose-500 text-white border-rose-500", status: "CRÍTICO (TEMPO FECHADO)", dot: "bg-rose-500 shadow-[0_0_8px_#f43f5e]" };
-  if (visibility < 5000 || windGust > 35) return { rule: "ATENÇÃO", color: "bg-amber-500 text-black border-amber-500", status: "MARGINAL (VISIB. REDUZIDA)", dot: "bg-amber-500 shadow-[0_0_8px_#f59e0b]" };
-  return { rule: "LIBERADO", color: "bg-emerald-500/20 text-emerald-400 border-emerald-500/50", status: "VISUAL (CÉU LIMPO)", dot: "bg-emerald-500" };
+  if (visibility < 3000 || windGust > 50) return { rule: "VOO RESTRITO", color: "bg-rose-500 text-white border-rose-500", status: "CRÍTICO", dot: "bg-rose-500 shadow-[0_0_8px_#f43f5e]" };
+  if (visibility < 5000 || windGust > 35) return { rule: "ATENÇÃO", color: "bg-amber-500 text-black border-amber-500", status: "MARGINAL", dot: "bg-amber-500 shadow-[0_0_8px_#f59e0b]" };
+  return { rule: "LIBERADO", color: "bg-emerald-500/20 text-emerald-400 border-emerald-500/50", status: "VISUAL", dot: "bg-emerald-500" };
 };
 
 // ==========================================
-// 3. COMPONENTES DE DADOS (BARRA LATERAL)
+// 3. COMPONENTES DE DADOS (BARRA LATERAL SLIM)
 // ==========================================
 const HydrologyTerminal = ({ rivers, isSyncing }) => {
   if (isSyncing) {
     return (
       <div className="bg-[#0b1120]/90 backdrop-blur-xl rounded-2xl p-6 border border-slate-700 shadow-2xl h-full flex flex-col items-center justify-center">
         <Loader2 size={32} className="text-cyan-400 animate-spin mb-4" />
-        <span className="text-cyan-400 font-bold tracking-widest text-xs">PROCESSANDO DADOS...</span>
+        <span className="text-cyan-400 font-bold tracking-widest text-[10px]">PROCESSANDO DADOS...</span>
       </div>
     );
   }
 
   return (
-    <div className="bg-[#0b1120]/90 backdrop-blur-xl rounded-2xl p-4 lg:p-5 border border-slate-700 shadow-2xl h-full flex flex-col relative overflow-hidden">
-      <div className="flex justify-between items-center mb-3 border-b border-slate-800 pb-3 shrink-0">
+    <div className="bg-[#0b1120]/90 backdrop-blur-xl rounded-2xl p-3 border border-slate-700 shadow-2xl h-full flex flex-col relative overflow-hidden">
+      <div className="flex justify-between items-center mb-2 border-b border-slate-800 pb-2 shrink-0">
         <div>
-          <div className="flex items-center gap-1 text-[10px] text-cyan-400 font-bold tracking-widest mb-1">
-            <ActivitySquare size={10} /> TELEMETRIA EM TEMPO REAL
+          <div className="flex items-center gap-1 text-[9px] text-cyan-400 font-bold tracking-widest mb-1">
+            <ActivitySquare size={10} /> TELEMETRIA: FEED DIRETO
           </div>
-          <h2 className="text-xl font-black text-white">REDE HIDROLÓGICA</h2>
+          <h2 className="text-lg font-black text-white leading-none">REDE HIDROLÓGICA</h2>
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 overflow-y-auto custom-scrollbar pr-2 pb-2 h-full">
+      <div className="flex flex-col gap-2 overflow-y-auto custom-scrollbar pr-1 pb-1 h-full">
         {rivers.map(river => {
           const isOffline = typeof river.level !== 'number';
           const isFlood = !isOffline && river.level >= river.flood;
@@ -90,20 +90,25 @@ const HydrologyTerminal = ({ rivers, isSyncing }) => {
           const pct = Math.min(((!isOffline ? river.level : 0) / (river.flood * 1.2)) * 100, 100);
 
           return (
-            <div key={river.id} className={`p-3 rounded-xl border ${cardStyle} flex flex-col justify-between shrink-0`}>
-              <div className="flex justify-between items-start mb-2">
-                <span className={`text-sm font-bold ${isOffline ? 'text-slate-500' : 'text-slate-200'}`}>{river.name}</span>
+            <div key={river.id} className={`p-2.5 rounded-xl border ${cardStyle} flex flex-col justify-between shrink-0`}>
+              <div className="flex justify-between items-start mb-1">
+                <span className={`text-xs font-bold leading-tight ${isOffline ? 'text-slate-500' : 'text-slate-200'}`}>{river.name}</span>
+                {!isOffline && (
+                  <span className={`text-[7px] px-1.5 py-0.5 rounded font-bold tracking-widest ${river.isFeed ? 'bg-cyan-500/10 text-cyan-500 border border-cyan-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'}`}>
+                    {river.isFeed ? 'FEED ATIVO' : 'SACE/ANA'}
+                  </span>
+                )}
               </div>
-              <div className="flex items-end gap-1 mb-1">
-                <span className={`text-3xl font-black leading-none tracking-tighter ${numColor}`}>
+              <div className="flex items-end gap-1">
+                <span className={`text-2xl lg:text-3xl font-black leading-none tracking-tighter ${numColor}`}>
                   {isOffline ? '--' : river.level.toFixed(2)}
                 </span>
-                <span className={`text-[10px] font-bold mb-1 ${isOffline ? 'text-slate-600' : 'text-slate-500'}`}>m</span>
+                <span className={`text-[9px] font-bold mb-0.5 ${isOffline ? 'text-slate-600' : 'text-slate-500'}`}>m</span>
               </div>
-              <div className="w-full h-1.5 bg-slate-800/80 rounded-full mt-2 relative overflow-hidden">
+              <div className="w-full h-1 bg-slate-800/80 rounded-full mt-1.5 relative overflow-hidden">
                  {!isOffline && <div className={`absolute top-0 left-0 h-full transition-all duration-1000 ${isFlood ? 'bg-rose-500' : isAlert ? 'bg-amber-500' : 'bg-cyan-500'}`} style={{ width: `${pct}%` }}></div>}
               </div>
-              <div className="flex justify-between text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-2">
+              <div className="flex justify-between text-[8px] text-slate-500 font-bold uppercase tracking-wider mt-1.5">
                 <span>Alerta: {river.alert}m</span>
                 <span>Inundação: {river.flood}m</span>
               </div>
@@ -124,28 +129,28 @@ const GeneralOverview = ({ stations, rivers }) => {
   const hasAlerts = enchenteRisks.length > 0 || vendavalRisks.length > 0 || nevoeiroRisks.length > 0 || riosEmRisco.length > 0;
 
   return (
-    <div className="bg-[#0b1120]/90 backdrop-blur-xl rounded-2xl p-4 lg:p-6 border border-slate-700 shadow-2xl h-full overflow-y-auto custom-scrollbar">
-      <h2 className="text-xl lg:text-2xl font-black text-white flex items-center gap-3 mb-6 border-b border-slate-800 pb-4">
-        <Siren className={hasAlerts ? "text-rose-500 animate-pulse" : "text-emerald-500"} />
+    <div className="bg-[#0b1120]/90 backdrop-blur-xl rounded-2xl p-3 border border-slate-700 shadow-2xl h-full overflow-y-auto custom-scrollbar">
+      <h2 className="text-lg font-black text-white flex items-center gap-2 mb-4 border-b border-slate-800 pb-3">
+        <Siren className={hasAlerts ? "text-rose-500 animate-pulse w-5 h-5" : "text-emerald-500 w-5 h-5"} />
         SITUAÇÃO DO RS
       </h2>
 
       {!hasAlerts ? (
-        <div className="flex flex-col items-center justify-center py-10 text-emerald-400 bg-emerald-900/10 border border-emerald-900/30 rounded-xl">
-          <CheckCircle2 size={48} className="mb-3"/>
-          <p className="font-bold text-center">CONDIÇÕES NORMAIS NO ESTADO</p>
-          <p className="text-xs text-emerald-500 mt-1">Nenhum alerta crítico detetado.</p>
+        <div className="flex flex-col items-center justify-center py-8 text-emerald-400 bg-emerald-900/10 border border-emerald-900/30 rounded-xl">
+          <CheckCircle2 size={36} className="mb-2"/>
+          <p className="font-bold text-center text-sm">CONDIÇÕES NORMAIS</p>
+          <p className="text-[10px] text-emerald-500 mt-1">Sem alertas no estado.</p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {riosEmRisco.length > 0 && (
-            <div className="bg-rose-900/20 border border-rose-500/50 p-4 rounded-xl shadow-[0_0_15px_rgba(244,63,94,0.1)]">
-              <h3 className="text-rose-500 font-black flex items-center gap-2 mb-3 text-sm tracking-widest"><Waves size={16}/> RISCO DE ENCHENTE</h3>
-              <div className="grid gap-2">
+            <div className="bg-rose-900/20 border border-rose-500/50 p-3 rounded-xl shadow-[0_0_15px_rgba(244,63,94,0.1)]">
+              <h3 className="text-rose-500 font-black flex items-center gap-2 mb-2 text-xs tracking-widest"><Waves size={14}/> ENCHENTE</h3>
+              <div className="grid gap-1.5">
                 {riosEmRisco.map(r => (
-                  <div key={r.id} className="flex justify-between items-center text-xs bg-slate-900/80 p-2.5 rounded border border-rose-500/30">
-                    <span className="text-slate-200 font-bold">{r.name}</span>
-                    <span className={`font-black px-2 py-0.5 rounded ${r.level >= r.flood ? 'bg-rose-500 text-white' : 'bg-amber-500 text-black'}`}>
+                  <div key={r.id} className="flex justify-between items-center text-[10px] bg-slate-900/80 p-2 rounded border border-rose-500/30">
+                    <span className="text-slate-200 font-bold leading-tight max-w-[65%]">{r.name}</span>
+                    <span className={`font-black px-1.5 py-0.5 rounded shrink-0 ${r.level >= r.flood ? 'bg-rose-500 text-white' : 'bg-amber-500 text-black'}`}>
                       {r.level.toFixed(2)}m
                     </span>
                   </div>
@@ -154,26 +159,26 @@ const GeneralOverview = ({ stations, rivers }) => {
             </div>
           )}
           {enchenteRisks.length > 0 && (
-            <div className="bg-blue-900/20 border border-blue-500/30 p-4 rounded-xl">
-              <h3 className="text-blue-400 font-bold flex items-center gap-2 mb-2 text-sm"><Droplets size={16}/> RISCO CHUVA FORTE</h3>
-              <div className="grid gap-2">
+            <div className="bg-blue-900/20 border border-blue-500/30 p-3 rounded-xl">
+              <h3 className="text-blue-400 font-bold flex items-center gap-2 mb-2 text-xs"><Droplets size={14}/> CHUVA FORTE</h3>
+              <div className="grid gap-1.5">
                 {enchenteRisks.map(s => (
-                  <div key={s.id} className="flex justify-between items-center text-xs bg-slate-900/50 p-2 rounded">
+                  <div key={s.id} className="flex justify-between items-center text-[10px] bg-slate-900/50 p-2 rounded">
                     <span className="text-slate-300 font-bold">{s.name}</span>
-                    <span className="text-blue-400 font-black">{s.forecast[0].rain} mm/dia</span>
+                    <span className="text-blue-400 font-black shrink-0">{s.forecast[0].rain} mm/dia</span>
                   </div>
                 ))}
               </div>
             </div>
           )}
           {vendavalRisks.length > 0 && (
-             <div className="bg-amber-900/20 border border-amber-500/30 p-4 rounded-xl">
-               <h3 className="text-amber-500 font-bold flex items-center gap-2 mb-2 text-sm"><Wind size={16}/> ALERTA DE VENDAVAL</h3>
-               <div className="grid gap-2">
+             <div className="bg-amber-900/20 border border-amber-500/30 p-3 rounded-xl">
+               <h3 className="text-amber-500 font-bold flex items-center gap-2 mb-2 text-xs"><Wind size={14}/> VENDAVAL</h3>
+               <div className="grid gap-1.5">
                  {vendavalRisks.map(s => (
-                   <div key={s.id} className="flex justify-between items-center text-xs bg-slate-900/50 p-2 rounded">
+                   <div key={s.id} className="flex justify-between items-center text-[10px] bg-slate-900/50 p-2 rounded">
                      <span className="text-slate-300 font-bold">{s.name}</span>
-                     <span className="text-amber-400 font-black">{s.current.gusts} km/h</span>
+                     <span className="text-amber-400 font-black shrink-0">{s.current.gusts} km/h</span>
                    </div>
                  ))}
                </div>
@@ -190,75 +195,75 @@ const StationTerminal = ({ data }) => {
   const flightData = getFlightCategory(data.current.visibility, data.current.gusts);
 
   return (
-    <div className="bg-[#0b1120]/90 backdrop-blur-xl rounded-2xl p-4 border border-slate-700 shadow-2xl h-full flex flex-col relative overflow-hidden">
-      <div className={`absolute top-0 right-0 w-32 h-32 blur-[80px] rounded-full opacity-20 pointer-events-none ${flightData.rule === 'VOO RESTRITO' ? 'bg-rose-500' : flightData.rule === 'ATENÇÃO' ? 'bg-amber-500' : 'bg-cyan-500'}`}></div>
+    <div className="bg-[#0b1120]/90 backdrop-blur-xl rounded-2xl p-3 border border-slate-700 shadow-2xl h-full flex flex-col relative overflow-hidden">
+      <div className={`absolute top-0 right-0 w-24 h-24 blur-[60px] rounded-full opacity-20 pointer-events-none ${flightData.rule === 'VOO RESTRITO' ? 'bg-rose-500' : flightData.rule === 'ATENÇÃO' ? 'bg-amber-500' : 'bg-cyan-500'}`}></div>
 
-      <div className="flex flex-col justify-between items-start gap-1 border-b border-slate-700/50 pb-2 mb-3 shrink-0">
+      <div className="flex flex-col justify-between items-start gap-1 border-b border-slate-700/50 pb-2 mb-2 shrink-0">
         <div>
-          <div className="flex items-center gap-1 text-[9px] text-cyan-500 font-bold tracking-widest mb-1"><Crosshair size={10} /> DADOS CLIMÁTICOS</div>
-          <h2 className="text-lg font-black text-white">{data.name}</h2>
+          <div className="flex items-center gap-1 text-[8px] text-cyan-500 font-bold tracking-widest mb-0.5"><Crosshair size={8} /> DADOS CLIMÁTICOS</div>
+          <h2 className="text-base font-black text-white leading-none">{data.name}</h2>
         </div>
-        <div className="flex flex-col items-start gap-1 w-full mt-1">
-          <span className={`px-2 py-0.5 rounded text-[9px] font-bold border w-max ${flightData.color} tracking-widest shadow-lg`}>{flightData.rule}</span>
+        <div className="flex w-full mt-1">
+          <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold border ${flightData.color} tracking-widest shadow-lg`}>{flightData.rule}</span>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 pb-2">
-        <div className="flex items-center gap-4 pb-3 border-b border-slate-800/50 mb-3">
+      <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 pb-1">
+        <div className="flex items-center gap-3 pb-2 border-b border-slate-800/50 mb-2">
           {getWeatherIcon(data.current.code, data.current.isDay)}
           <div>
-            <h1 className="text-5xl font-black text-white tracking-tighter leading-none">{data.current.temp}°</h1>
-            <span className="text-[10px] text-slate-400 font-medium">Sensação: {data.current.feels}°C</span>
+            <h1 className="text-4xl font-black text-white tracking-tighter leading-none">{data.current.temp}°</h1>
+            <span className="text-[9px] text-slate-400 font-medium">Sens. {data.current.feels}°C</span>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 mb-4">
-          <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-700/50">
-            <div className="text-[9px] text-slate-400 font-bold uppercase"><Compass size={12} className="inline mr-1"/>Vento</div>
-            <div className="text-xs font-bold text-white mt-1">{data.current.windSpd} km/h</div>
+        <div className="grid grid-cols-2 gap-1.5 mb-3">
+          <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-700/50 flex flex-col items-center text-center">
+            <div className="text-[8px] text-slate-400 font-bold uppercase"><Compass size={10} className="inline mr-0.5"/>Vento</div>
+            <div className="text-xs font-bold text-white mt-0.5">{data.current.windSpd} <span className="text-[9px]">km/h</span></div>
           </div>
-          <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-700/50">
-            <div className="text-[9px] text-rose-400 font-bold uppercase"><Wind size={12} className="inline mr-1"/>Rajadas</div>
-            <div className="text-xs font-bold text-rose-400 mt-1">{data.current.gusts} km/h</div>
+          <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-700/50 flex flex-col items-center text-center">
+            <div className="text-[8px] text-rose-400 font-bold uppercase"><Wind size={10} className="inline mr-0.5"/>Rajadas</div>
+            <div className="text-xs font-bold text-rose-400 mt-0.5">{data.current.gusts} <span className="text-[9px]">km/h</span></div>
           </div>
-          <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-700/50">
-            <div className="text-[9px] text-slate-400 font-bold uppercase"><Eye size={12} className="inline mr-1"/>Visib.</div>
-            <div className="text-xs font-bold text-white mt-1">{data.current.visibility} m</div>
+          <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-700/50 flex flex-col items-center text-center">
+            <div className="text-[8px] text-slate-400 font-bold uppercase"><Eye size={10} className="inline mr-0.5"/>Visib.</div>
+            <div className="text-xs font-bold text-white mt-0.5">{data.current.visibility} <span className="text-[9px]">m</span></div>
           </div>
-          <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-700/50">
-            <div className="text-[9px] text-slate-400 font-bold uppercase"><Gauge size={12} className="inline mr-1"/>Pressão</div>
-            <div className="text-xs font-bold text-white mt-1">{data.current.pressure} hPa</div>
+          <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-700/50 flex flex-col items-center text-center">
+            <div className="text-[8px] text-slate-400 font-bold uppercase"><Gauge size={10} className="inline mr-0.5"/>Pressão</div>
+            <div className="text-xs font-bold text-white mt-0.5">{data.current.pressure} <span className="text-[9px]">hPa</span></div>
           </div>
         </div>
 
-        <div className="mb-4 p-3 border border-slate-700/50 bg-slate-900/40 rounded-xl">
-          <div className="text-[9px] text-cyan-400 font-bold tracking-widest mb-3">PRECIPITAÇÃO (6 HORAS)</div>
-          <div className="flex justify-between items-end gap-1">
+        <div className="mb-3 p-2 border border-slate-700/50 bg-slate-900/40 rounded-xl">
+          <div className="text-[8px] text-cyan-400 font-bold tracking-widest mb-2 text-center">CHUVA (6 HORAS)</div>
+          <div className="flex justify-between items-end gap-0.5">
             {data.hourly.map((h, i) => (
               <div key={i} className="flex flex-col items-center flex-1">
-                <span className="text-[9px] font-bold text-slate-400 mb-1">{h.time}</span>
+                <span className="text-[8px] font-bold text-slate-400 mb-0.5">{h.time}</span>
                 <div className="transform scale-50 -my-2">{getWeatherIcon(h.code, 1)}</div>
-                <div className="w-full bg-slate-800 rounded-sm overflow-hidden h-10 relative flex items-end mt-1">
+                <div className="w-full bg-slate-800 rounded-sm overflow-hidden h-8 relative flex items-end mt-1">
                   <div style={{ height: `${Math.min((h.precip/10)*100, 100)}%` }} className="w-full bg-gradient-to-t from-blue-600 to-cyan-400 rounded-t-sm"></div>
                 </div>
-                <span className="text-[9px] font-bold text-cyan-300 mt-1">{h.precip} <span className="text-[7px]">mm</span></span>
+                <span className="text-[8px] font-bold text-cyan-300 mt-1">{h.precip}</span>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="p-3 border border-slate-700/50 bg-slate-900/40 rounded-xl">
-          <div className="text-[9px] text-amber-400 font-bold tracking-widest mb-3 flex items-center gap-2">
-            <ShieldAlert size={12}/> PREVISÃO (7 DIAS)
+        <div className="p-2 border border-slate-700/50 bg-slate-900/40 rounded-xl">
+          <div className="text-[8px] text-amber-400 font-bold tracking-widest mb-2 flex items-center justify-center gap-1">
+            <ShieldAlert size={10}/> PREVISÃO (7 DIAS)
           </div>
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1">
             {data.forecast.map((day, idx) => (
-              <div key={idx} className="flex justify-between items-center p-1.5 bg-slate-900/80 rounded-lg border border-slate-800">
-                <span className={`text-[10px] font-black tracking-wider w-10 ${idx === 0 ? 'text-amber-400' : 'text-slate-300'}`}>{day.dayName}</span>
-                <div className="transform scale-50 -my-2">{getWeatherIcon(day.code, 1)}</div>
-                <span className="text-[10px] font-bold text-slate-400">{day.max}° <span className="text-slate-600">/ {day.min}°</span></span>
-                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${day.rain > 15 ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' : day.rain > 0 ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-slate-800 text-slate-500 border-transparent'}`}>
-                  {day.rain > 0 ? `${day.rain.toFixed(1)} mm` : '0 mm'}
+              <div key={idx} className="flex justify-between items-center p-1 bg-slate-900/80 rounded-lg border border-slate-800">
+                <span className={`text-[9px] font-black tracking-wider w-8 ${idx === 0 ? 'text-amber-400' : 'text-slate-300'}`}>{day.dayName}</span>
+                <div className="transform scale-50 -my-3">{getWeatherIcon(day.code, 1)}</div>
+                <span className="text-[9px] font-bold text-slate-400">{day.max}°<span className="text-slate-600">/{day.min}°</span></span>
+                <span className={`text-[8px] font-bold px-1 py-0.5 rounded border text-center min-w-[32px] ${day.rain > 15 ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' : day.rain > 0 ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-slate-800 text-slate-500 border-transparent'}`}>
+                  {day.rain > 0 ? `${day.rain.toFixed(1)}` : '0'}
                 </span>
               </div>
             ))}
@@ -343,14 +348,16 @@ export default function Agenda() {
 
     const fetchRivers = async () => {
       setIsHydroSyncing(true);
+      
       try {
-        // Tática ultra-resistente para evitar o bloqueio de proxies
         const getFeedItems = async (url) => {
+          // O SISTEMA ROBUSTO ORIGINAL DO SEU APP.JSX!
           const proxies = [
-            `https://corsproxy.io/?${encodeURIComponent(url)}`,
+            `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
             `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-            `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
+            `https://corsproxy.io/?${encodeURIComponent(url)}`
           ];
+
           for (const p of proxies) {
             try {
               const res = await fetch(p, { cache: 'no-store' });
@@ -358,10 +365,13 @@ export default function Agenda() {
                 const text = await res.text();
                 let data;
                 try { data = JSON.parse(text); } catch (e) { continue; }
-                if (data.items) return data.items;
-                if (data.contents) {
+                
+                if (data && data.items && Array.isArray(data.items)) return data.items;
+                if (data && data.contents) {
                    const innerData = JSON.parse(data.contents);
-                   if (innerData.items) return innerData.items;
+                   if (innerData && innerData.items && Array.isArray(innerData.items)) {
+                     return innerData.items;
+                   }
                 }
               }
             } catch(e) {}
@@ -376,35 +386,32 @@ export default function Agenda() {
 
         const updatedRivers = await Promise.all(INITIAL_RIVERS.map(async (rio) => {
           let nivelAtual = null;
+          let isFeed = false;
 
-          // TÁTICA 1: Lendo o FEED JSON
+          // TÁTICA 1: JSON FEED
           if (rio.feedItemUrl && allFeedItems.length > 0) {
-            const targetUrl = rio.feedItemUrl.replace(/\/$/, '');
-            const item = allFeedItems.find(i => (i.url || '').replace(/\/$/, '') === targetUrl);
+            const item = allFeedItems.find(i => i.url === rio.feedItemUrl || (i.id && i.id.startsWith(rio.feedItemUrl)));
             if (item) {
-              let match = null;
-              if (item.title) match = item.title.match(/([0-9]+[.,][0-9]+)\s*m/i);
-              if (!match && item.content_text) match = item.content_text.match(/([0-9]+[.,][0-9]+)\s*m/i);
+              let match = item.title?.match(/([0-9]+[.,][0-9]+)\s*m/i);
+              if (!match) match = item.content_text?.match(/([0-9]+[.,][0-9]+)\s*(?:m|metros)/i);
               if (match && match[1]) {
                 nivelAtual = parseFloat(match[1].replace(',', '.'));
+                isFeed = true;
               }
             }
           }
 
-          // TÁTICA 2: SACE/CPRM (Usando a sua própria infraestrutura da Vercel)
+          // TÁTICA 2: SACE/CPRM
           if (nivelAtual === null) {
             try {
-              // Note que agora ele bate no '/api/sace' que você configurou no vercel.json! Anti-bloqueio total.
-              let res = await fetch(`/api/sace/${rio.cod}`, { cache: 'no-store' });
-              if (!res.ok) {
-                res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent('https://sace.cprm.gov.br/api/dadosestacao/' + rio.cod)}`);
-              }
+              const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent('https://sace.cprm.gov.br/api/dadosestacao/' + rio.cod)}`);
               if (res.ok) {
                 const data = await res.json();
                 if (Array.isArray(data) && data.length > 0) {
                   for (let i = data.length - 1; i >= 0; i--) {
                     if (data[i].nivel) {
                       nivelAtual = data[i].nivel / 100;
+                      isFeed = false;
                       break;
                     }
                   }
@@ -413,38 +420,30 @@ export default function Agenda() {
             } catch(e) {}
           }
 
-          // TÁTICA 3: ANA (Aproveitando a sua api/ana.js nativa)
+          // TÁTICA 3: ANA
           if (nivelAtual === null) {
             try {
-              // Bate diretamente na sua função Serverless (api/ana.js) e evita qualquer proxy externo!
-              let res = await fetch(`/api/ana/${rio.cod}`, { cache: 'no-store' });
-              let text = "";
-              
+              const url = `https://api.allorigins.win/get?url=${encodeURIComponent('http://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosTempoReal?codEstacao=' + rio.cod)}`;
+              const res = await fetch(url, { cache: 'no-store' });
               if (res.ok) {
-                text = await res.text();
-              } else {
-                res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent('http://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosTempoReal?codEstacao=' + rio.cod)}`);
-                if (res.ok) {
-                  const data = await res.json();
-                  if (data.contents) text = data.contents;
-                }
-              }
-              
-              if (text && text.includes('<Nivel>')) {
-                const match = text.match(/<Nivel>([0-9]+)<\/Nivel>/);
-                if (match && match[1]) {
-                  nivelAtual = parseFloat(match[1]) / 100;
+                const data = await res.json();
+                if (data.contents && data.contents.includes('<Nivel>')) {
+                  const match = data.contents.match(/<Nivel>([0-9]+)<\/Nivel>/);
+                  if (match && match[1]) {
+                    nivelAtual = parseFloat(match[1]) / 100;
+                    isFeed = false;
+                  }
                 }
               }
             } catch(e) {}
           }
 
-          return { ...rio, level: nivelAtual !== null ? parseFloat(nivelAtual) : null };
+          return { ...rio, level: nivelAtual !== null ? parseFloat(nivelAtual) : null, isFeed };
         }));
         
         setRiverData(updatedRivers);
       } catch (error) {
-        console.error("Erro nos rios:", error);
+        console.error("Falha tática na hidrologia:", error);
       } finally {
         setIsHydroSyncing(false);
       }
@@ -479,48 +478,48 @@ export default function Agenda() {
       `}</style>
 
       {/* CABEÇALHO */}
-      <div className="flex justify-between items-center w-full shrink-0 px-2">
+      <div className="flex justify-between items-center w-full shrink-0 px-1">
         <div>
           <h1 className="text-lg md:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 tracking-tight leading-none flex items-center gap-2">
             <ShieldAlert size={18} className="text-cyan-400"/> DASHBOARD CLIMÁTICO & AGENDA
           </h1>
         </div>
-        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border shadow-lg ${statusColors[globalThreat.level]}`}>
-          <AlertTriangle size={14} className={globalThreat.level === 'RED' ? 'animate-pulse' : ''} />
-          <span className="text-[10px] font-bold uppercase tracking-wider">{globalThreat.text}</span>
+        <div className={`flex items-center gap-2 px-3 py-1 rounded-lg border shadow-lg ${statusColors[globalThreat.level]}`}>
+          <AlertTriangle size={12} className={globalThreat.level === 'RED' ? 'animate-pulse' : ''} />
+          <span className="text-[9px] font-bold uppercase tracking-wider">{globalThreat.text}</span>
         </div>
       </div>
       
       {/* SELETOR DE ESTAÇÕES (ABAS) */}
-      <div className="flex gap-1 overflow-x-auto pb-1 custom-scrollbar w-full shrink-0 border-b border-slate-800 px-2">
+      <div className="flex gap-1 overflow-x-auto pb-1 custom-scrollbar w-full shrink-0 border-b border-slate-800 px-1">
         {BASES.map((base) => {
           const stationData = stationsData.find(s => s.id === base.id);
           const flightData = stationData ? getFlightCategory(stationData.current.visibility, stationData.current.gusts) : null;
           const isSelected = activeId === base.id;
           
           return (
-            <button key={base.id} onClick={() => setActiveId(base.id)} className={`flex-shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-t-lg transition-all duration-300 border-x border-t ${isSelected ? 'bg-slate-800/80 border-slate-600 shadow-md' : 'bg-slate-900/30 border-slate-800/50 hover:bg-slate-800/50'}`}>
+            <button key={base.id} onClick={() => setActiveId(base.id)} className={`flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-t-lg transition-all duration-300 border-x border-t ${isSelected ? 'bg-slate-800/80 border-slate-600 shadow-md' : 'bg-slate-900/30 border-slate-800/50 hover:bg-slate-800/50'}`}>
               {base.id === 'HYDRO' ? <Waves size={10} className={isSelected ? "text-blue-400" : "text-slate-500"}/> : flightData ? <div className={`w-2 h-2 rounded-full shrink-0 ${flightData.dot}`}></div> : <MapIcon size={10} className={isSelected ? "text-cyan-400" : "text-slate-500"}/>}
               <div className="flex flex-col items-start text-left">
-                <span className={`text-[9px] lg:text-[10px] font-bold whitespace-nowrap ${isSelected ? 'text-white' : 'text-slate-400'}`}>{base.name}</span>
-                {stationData && <span className={`text-[8px] font-bold ${isSelected ? 'text-cyan-400' : 'text-slate-600'}`}>{stationData.current.temp}°C</span>}
+                <span className={`text-[9px] font-bold whitespace-nowrap ${isSelected ? 'text-white' : 'text-slate-400'}`}>{base.name}</span>
+                {stationData && <span className={`text-[8px] font-bold leading-none mt-0.5 ${isSelected ? 'text-cyan-400' : 'text-slate-600'}`}>{stationData.current.temp}°C</span>}
               </div>
             </button>
           );
         })}
       </div>
 
-      {/* ÁREA PRINCIPAL: BARRA LATERAL ESQUERDA + CALENDÁRIO DIREITA */}
-      <div className="flex-1 flex flex-col lg:flex-row gap-3 overflow-hidden min-h-0">
+      {/* ÁREA PRINCIPAL: BARRA LATERAL ESQUERDA (FINA) + CALENDÁRIO DIREITA (DESTAQUE) */}
+      <div className="flex-1 flex flex-col lg:flex-row gap-3 overflow-hidden min-h-0 px-1">
         
-        {/* BARRA LATERAL COM OS DADOS */}
-        <div className="w-full lg:w-[380px] xl:w-[420px] shrink-0 h-[45%] lg:h-full overflow-hidden">
+        {/* BARRA LATERAL COM OS DADOS (LARGURA REDUZIDA PARA TV) */}
+        <div className="w-full lg:w-[320px] xl:w-[340px] 2xl:w-[360px] shrink-0 h-[45%] lg:h-full overflow-hidden">
            {activeId === 'RS-GENERAL' ? <GeneralOverview stations={stationsData} rivers={riverData} /> : 
             activeId === 'HYDRO' ? <HydrologyTerminal rivers={riverData} isSyncing={isHydroSyncing} /> : 
             <StationTerminal data={stationsData.find(s => s.id === activeId)} />}
         </div>
 
-        {/* ÁREA DA AGENDA (GOOGLE CALENDAR) */}
+        {/* ÁREA DA AGENDA (GOOGLE CALENDAR) - OCUPA O RESTO DO ECRÃ */}
         <div className="flex-1 relative rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] border border-slate-700 bg-white overflow-hidden h-[55%] lg:h-full">
           <iframe 
             src="https://calendar.google.com/calendar/embed?src=sdsophaco@gmail.com&ctz=America/Sao_Paulo&mode=WEEK&showTitle=0&showPrint=0&showTabs=1&showCalendars=0&showTz=0" 
