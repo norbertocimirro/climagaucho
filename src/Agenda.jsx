@@ -15,7 +15,6 @@ const BASES = [
   { id: 'SBBG', name: 'BAGÉ', lat: -31.33, lon: -54.11 }
 ];
 
-// CÓPIA EXATA DA SUA LISTA ORIGINAL DO APP.JSX
 const INITIAL_RIVERS = [
   { id: 'taquari', name: 'Rio Taquari (Lajeado)', cod: '86695000', feedItemUrl: 'https://nivelguaiba.com.br/lajeado', level: null, alert: 15.00, flood: 19.00, lat: -29.50, lon: -51.96 },
   { id: 'guaiba', name: 'Guaíba (Cais Mauá)', cod: '87450004', feedItemUrl: 'https://nivelguaiba.com.br/', level: null, alert: 2.50, flood: 3.00, lat: -30.03, lon: -51.23 },
@@ -52,7 +51,7 @@ const HydrologyTerminal = ({ rivers, isSyncing }) => {
     return (
       <div className="bg-[#0b1120]/90 backdrop-blur-xl rounded-2xl p-6 border border-slate-700 shadow-2xl h-full flex flex-col items-center justify-center">
         <Loader2 size={32} className="text-cyan-400 animate-spin mb-4" />
-        <span className="text-cyan-400 font-bold tracking-widest text-[10px]">PROCESSANDO DADOS...</span>
+        <span className="text-cyan-400 font-bold tracking-widest text-[10px]">LENDO TELEMETRIA...</span>
       </div>
     );
   }
@@ -347,20 +346,35 @@ export default function Agenda() {
       } catch (error) { setIsInitializing(false); }
     };
 
-    // CÓPIA EXATA DO SEU APP.JSX COM CONSOLE.LOGS E CORSPROXY PARA GARANTIA
     const fetchRivers = async () => {
       setIsHydroSyncing(true);
       
+      // NOVA FUNÇÃO COM TIMEOUT: Rápida mas não bloqueia a rede!
+      const fetchWithTimeout = async (url, options = {}, timeout = 4000) => {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeout);
+        try {
+          const res = await fetch(url, { ...options, signal: controller.signal });
+          clearTimeout(id);
+          return res;
+        } catch (error) {
+          clearTimeout(id);
+          throw error;
+        }
+      };
+
       try {
         const getFeedItems = async (url) => {
+          // Os melhores proxies na ordem certa
           const proxies = [
+            `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
             `https://corsproxy.io/?${encodeURIComponent(url)}`,
-            `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-            `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
+            `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`
           ];
           for (const p of proxies) {
             try {
-              const res = await fetch(p, { cache: 'no-store' });
+              // Dá 4 segundos para o proxy responder. Se falhar, salta logo para o próximo!
+              const res = await fetchWithTimeout(p, { cache: 'no-store' }, 4000);
               if (res.ok) {
                 const text = await res.text();
                 let data;
@@ -372,7 +386,9 @@ export default function Agenda() {
                    if (innerData.items) return innerData.items;
                 }
               }
-            } catch(e) {}
+            } catch(e) {
+              // Se deu erro ou demorou mais de 4s, ele não trava, vai para o próximo proxy
+            }
           }
           return [];
         };
@@ -381,20 +397,18 @@ export default function Agenda() {
         const itemsGuaiba = await getFeedItems('https://nivelguaiba.com.br/feed' + cacheBuster);
         const itemsUruguai = await getFeedItems('https://niveluruguai.com.br/feed' + cacheBuster);
         const allFeedItems = [...itemsGuaiba, ...itemsUruguai];
-        
-        console.log("Feeds carregados:", allFeedItems.length, "itens");
 
         const updatedRivers = await Promise.all(INITIAL_RIVERS.map(async (rio) => {
           let nivelAtual = null;
           let isFeed = false;
 
-          // CÓPIA EXATA DO APP.JSX AQUI:
+          // TÁTICA 1
           if (rio.feedItemUrl && allFeedItems.length > 0) {
             const item = allFeedItems.find(i => i.url === rio.feedItemUrl);
             if (item) {
               let match = null;
               if (item.title) match = item.title.match(/([0-9]+[.,][0-9]+)\s*m/i);
-              if (!match && item.content_text) match = item.content_text.match(/([0-9]+[.,][0-9]+)\s*m/i);
+              if (!match && item.content_text) match = item.content_text.match(/([0-9]+[.,][0-9]+)\s*(?:m|metros)/i);
 
               if (match && match[1]) {
                 nivelAtual = parseFloat(match[1].replace(',', '.'));
@@ -403,9 +417,10 @@ export default function Agenda() {
             }
           }
 
+          // TÁTICA 2
           if (nivelAtual === null) {
             try {
-              const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent('https://sace.cprm.gov.br/api/dadosestacao/' + rio.cod)}`);
+              const res = await fetchWithTimeout(`https://api.allorigins.win/raw?url=${encodeURIComponent('https://sace.cprm.gov.br/api/dadosestacao/' + rio.cod)}`, {}, 4000);
               if (res.ok) {
                 const data = await res.json();
                 if (Array.isArray(data) && data.length > 0) {
@@ -421,10 +436,11 @@ export default function Agenda() {
             } catch(e) {}
           }
 
+          // TÁTICA 3
           if (nivelAtual === null) {
             try {
               const url = `https://api.allorigins.win/get?url=${encodeURIComponent('http://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosTempoReal?codEstacao=' + rio.cod)}`;
-              const res = await fetch(url, { cache: 'no-store' });
+              const res = await fetchWithTimeout(url, { cache: 'no-store' }, 4000);
               if (res.ok) {
                 const data = await res.json();
                 if (data.contents && data.contents.includes('<Nivel>')) {
@@ -441,7 +457,6 @@ export default function Agenda() {
           return { ...rio, level: nivelAtual !== null ? parseFloat(nivelAtual) : null, isFeed };
         }));
         
-        console.log("Rios atualizados:", updatedRivers);
         setRiverData(updatedRivers);
       } catch (error) {
         console.error("Falha tática na hidrologia:", error);
